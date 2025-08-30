@@ -1,0 +1,18 @@
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: "CUSTOMER" | "BUSINESS_OWNER" | "ADMIN";
+  avatar?: string;
+  phone?: string;
+  address?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}

@@ -20,7 +20,7 @@ const registerSchema = z.object({
     email: z.string().email('Please enter a valid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
     confirmPassword: z.string(),
-    role: z.enum(['customer', 'business_owner']),
+    role: z.enum(['CUSTOMER', 'BUSINESS_OWNER']),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -43,7 +43,7 @@ export default function RegisterPage() {
     } = useForm<RegisterFormData>({
         resolver: zodResolver(registerSchema),
         defaultValues: {
-            role: 'customer',
+            role: 'CUSTOMER',
         },
     });
 
@@ -183,13 +183,13 @@ export default function RegisterPage() {
                                     <label className="relative">
                                         <input
                                             type="radio"
-                                            value="customer"
+                                            value="CUSTOMER"
                                             {...register('role')}
                                             className="sr-only"
                                         />
                                         <div className={`
                                             cursor-pointer rounded-lg border-2 p-4 text-center transition-all
-                                            ${selectedRole === 'customer' 
+                                            ${selectedRole === 'CUSTOMER' 
                                                 ? 'border-blue-500 bg-blue-50 text-blue-700' 
                                                 : 'border-gray-200 hover:border-gray-300'
                                             }
@@ -202,13 +202,13 @@ export default function RegisterPage() {
                                     <label className="relative">
                                         <input
                                             type="radio"
-                                            value="business_owner"
+                                            value="BUSINESS_OWNER"
                                             {...register('role')}
                                             className="sr-only"
                                         />
                                         <div className={`
                                             cursor-pointer rounded-lg border-2 p-4 text-center transition-all
-                                            ${selectedRole === 'business_owner' 
+                                            ${selectedRole === 'BUSINESS_OWNER'
                                                 ? 'border-blue-500 bg-blue-50 text-blue-700' 
                                                 : 'border-gray-200 hover:border-gray-300'
                                             }

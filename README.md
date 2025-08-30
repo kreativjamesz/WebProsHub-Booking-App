@@ -1,6 +1,6 @@
 # Marketplace Booking App
 
-A fully-featured marketplace application for booking services from local businesses, built with Next.js, TypeScript, Redux Toolkit, and Appwrite.
+A fully-featured marketplace application for booking services from local businesses, built with Next.js, TypeScript, Redux Toolkit, and MySQL with Prisma ORM.
 
 ## Features
 
@@ -30,7 +30,7 @@ A fully-featured marketplace application for booking services from local busines
 
 ### 🔐 **Security Features**
 - Role-based access control (RBAC)
-- Secure authentication with Appwrite
+- Secure authentication system
 - Protected routes and API endpoints
 - Input validation and sanitization
 - Secure data handling
@@ -40,17 +40,16 @@ A fully-featured marketplace application for booking services from local busines
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **State Management**: Redux Toolkit, React Redux
 - **UI Components**: shadcn/ui, Tailwind CSS
-- **Backend**: Appwrite (Backend-as-a-Service)
-- **Authentication**: Appwrite Auth
-- **Database**: Appwrite Database
-- **Storage**: Appwrite Storage
+- **Backend**: Next.js API Routes
+- **Database**: MySQL with Prisma ORM
+- **Authentication**: Custom authentication system
 - **Forms**: React Hook Form with Zod validation
 
 ## Prerequisites
 
 - Node.js 18+ 
 - npm or yarn
-- Appwrite account and project
+- MySQL database (local or cloud)
 
 ## Setup Instructions
 
@@ -67,28 +66,51 @@ cd my-booking-app
 npm install
 ```
 
-### 3. Appwrite Setup
+### 3. Database Setup
 
-1. Create an Appwrite account at [appwrite.io](https://appwrite.io)
-2. Create a new project
-3. Get your project ID and endpoint URL
-4. Create the following collections in your Appwrite database:
+#### Option A: Local MySQL
+1. Install MySQL Server
+2. Create a database: `CREATE DATABASE booking_app;`
+3. Create a user: `CREATE USER 'booking_user'@'localhost' IDENTIFIED BY 'your_password';`
+4. Grant privileges: `GRANT ALL PRIVILEGES ON booking_app.* TO 'booking_user'@'localhost';`
 
-#### Collections Structure
+#### Option B: Cloud MySQL Services
+- **PlanetScale**: MySQL-compatible database service
+- **Railway**: Easy MySQL deployment
+- **Supabase**: PostgreSQL option (if you prefer)
 
-**Users Collection**
-- `$id` (auto-generated)
+### 4. Environment Configuration
+
+Create a `.env` file in the root directory:
+
+```env
+# Database Configuration
+DATABASE_URL="mysql://username:password@localhost:3306/booking_app"
+
+# Next.js Configuration
+NEXTAUTH_SECRET="your-secret-key-here"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Environment
+NODE_ENV="development"
+```
+
+### 5. Database Schema Setup
+
+The application uses Prisma with the following models:
+
+#### Database Models
+
+**User Model**
+- `id` (auto-generated)
 - `email` (string, required, unique)
 - `name` (string, required)
-- `role` (string, required, enum: customer, business_owner, admin)
-- `avatar` (string, optional)
-- `phone` (string, optional)
-- `address` (string, optional)
-- `createdAt` (string, required)
-- `updatedAt` (string, required)
+- `role` (enum: CUSTOMER, BUSINESS_OWNER, ADMIN)
+- `createdAt` (DateTime, required)
+- `updatedAt` (DateTime, required)
 
-**Businesses Collection**
-- `$id` (auto-generated)
+**Business Model**
+- `id` (auto-generated)
 - `name` (string, required)
 - `description` (string, required)
 - `logo` (string, optional)
@@ -105,102 +127,78 @@ npm install
 - `isActive` (boolean, required)
 - `rating` (number, required)
 - `reviewCount` (number, required)
-- `createdAt` (string, required)
-- `updatedAt` (string, required)
+- `createdAt` (DateTime, required)
+- `updatedAt` (DateTime, required)
 
-**Categories Collection**
-- `$id` (auto-generated)
+**Category Model**
+- `id` (auto-generated)
 - `name` (string, required)
 - `description` (string, required)
 - `icon` (string, required)
 - `color` (string, required)
 - `isActive` (boolean, required)
-- `createdAt` (string, required)
-- `updatedAt` (string, required)
+- `createdAt` (DateTime, required)
+- `updatedAt` (DateTime, required)
 
-**Services Collection**
-- `$id` (auto-generated)
+**Service Model**
+- `id` (auto-generated)
 - `name` (string, required)
 - `description` (string, required)
-- `price` (number, required)
-- `duration` (number, required)
+- `price` (Decimal, required)
+- `duration` (number, required, in minutes)
 - `businessId` (string, required)
 - `categoryId` (string, required)
 - `image` (string, optional)
 - `isActive` (boolean, required)
-- `createdAt` (string, required)
-- `updatedAt` (string, required)
+- `createdAt` (DateTime, required)
+- `updatedAt` (DateTime, required)
 
-**Bookings Collection**
-- `$id` (auto-generated)
-- `customerId` (string, required)
+**Booking Model**
+- `id` (auto-generated)
+- `date` (DateTime, required)
+- `time` (string, required)
+- `status` (enum: PENDING, CONFIRMED, CANCELLED, COMPLETED)
+- `notes` (string, optional)
+- `userId` (string, required)
 - `businessId` (string, required)
 - `serviceId` (string, required)
-- `scheduledDate` (string, required)
-- `scheduledTime` (string, required)
-- `status` (string, required, enum: pending, confirmed, completed, cancelled)
-- `totalPrice` (number, required)
-- `notes` (string, optional)
-- `createdAt` (string, required)
-- `updatedAt` (string, required)
+- `createdAt` (DateTime, required)
+- `updatedAt` (DateTime, required)
 
-**Promos Collection**
-- `$id` (auto-generated)
+**Promo Model**
+- `id` (auto-generated)
 - `title` (string, required)
 - `description` (string, required)
 - `discountPercentage` (number, required)
 - `businessId` (string, required)
-- `startDate` (string, required)
-- `endDate` (string, required)
+- `startDate` (DateTime, required)
+- `endDate` (DateTime, required)
 - `isActive` (boolean, required)
-- `createdAt` (string, required)
-- `updatedAt` (string, required)
+- `createdAt` (DateTime, required)
+- `updatedAt` (DateTime, required)
 
-**Reviews Collection**
-- `$id` (auto-generated)
-- `customerId` (string, required)
-- `businessId` (string, required)
-- `rating` (number, required)
-- `comment` (string, required)
-- `createdAt` (string, required)
-- `updatedAt` (string, required)
+### 6. Database Initialization
 
-### 4. Environment Configuration
+```bash
+# Generate Prisma client
+npm run db:generate
 
-Create a `.env.local` file in the root directory:
+# Push schema to database
+npm run db:push
 
-```env
-NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
-NEXT_PUBLIC_APPWRITE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_APPWRITE_DATABASE_ID=your-database-id
+# Or run migrations
+npm run db:migrate
 ```
 
-### 5. Update Appwrite Configuration
+### 7. Seed the Database
 
-Edit `src/lib/appwrite.ts` and replace the placeholder values:
+```bash
+# Seed with sample data
+npm run seed
 
-```typescript
-const client = new Client()
-    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
-    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
-
-export const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
+# Or manually run
+node -e "import('./src/lib/seed-data.js').then(m => m.seedDatabase())"
 ```
-
-### 6. Create Storage Buckets
-
-Create the following storage buckets in Appwrite:
-- `business-logos` - for business logo images
-- `service-images` - for service images
-- `user-avatars` - for user profile pictures
-
-### 7. Set Up Permissions
-
-Configure appropriate permissions for each collection:
-- Users can read their own data
-- Business owners can read/write their business data
-- Admins have full access to all collections
-- Public read access for businesses, services, and categories
 
 ### 8. Run the Development Server
 
@@ -218,14 +216,60 @@ src/
 │   ├── admin/             # Admin dashboard
 │   ├── auth/              # Authentication pages
 │   ├── business/          # Business dashboard
-│   └── businesses/        # Business listing and search
+│   ├── businesses/        # Business listing and search
+│   └── api/               # API routes
+│       └── database/      # Database API endpoints
 ├── components/            # Reusable UI components
 │   └── ui/               # shadcn/ui components
 ├── lib/                   # Utility functions and configurations
 │   ├── stores/           # Redux store and slices
-│   ├── appwrite.ts       # Appwrite client configuration
+│   ├── types/            # TypeScript type definitions
+│   ├── database.ts       # Prisma client configuration
 │   ├── hooks.ts          # Custom React hooks
-│   └── types.ts          # TypeScript type definitions
+│   └── seed-data.ts      # Database seeding functions
+├── prisma/               # Database schema and migrations
+│   └── schema.prisma     # Prisma schema definition
+```
+
+## API Endpoints
+
+### Database Operations
+- `POST /api/database` - Create, read, update, delete operations
+- `GET /api/database` - List operations
+
+### Available Actions:
+- `action: "create"` - Create new records
+- `action: "list"` - List records with optional filters
+- `action: "get"` - Get single record by ID
+- `action: "update"` - Update existing records
+- `action: "delete"` - Delete records
+- `action: "clear"` - Clear entire collections
+
+### Supported Models:
+- `User` - User accounts and authentication
+- `Business` - Business listings
+- `Service` - Services offered by businesses
+- `Category` - Service categories
+- `Booking` - User bookings
+- `Promo` - Promotional offers
+
+## Database Management Scripts
+
+```bash
+# Generate Prisma client
+npm run db:generate
+
+# Push schema changes
+npm run db:push
+
+# Run migrations
+npm run db:migrate
+
+# Open Prisma Studio
+npm run db:studio
+
+# Seed database
+npm run seed
 ```
 
 ## Usage
@@ -252,7 +296,7 @@ src/
 
 ## Security Features
 
-- **Authentication**: Secure user authentication with Appwrite
+- **Authentication**: Custom authentication system
 - **Authorization**: Role-based access control
 - **Input Validation**: Form validation with Zod
 - **Data Protection**: Secure API endpoints and data handling
@@ -284,3 +328,5 @@ For support and questions, please open an issue in the repository or contact the
 - [ ] Advanced search filters
 - [ ] Review and rating system
 - [ ] Business verification system
+- [ ] Real-time notifications
+- [ ] Advanced reporting dashboard

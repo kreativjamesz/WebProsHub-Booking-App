@@ -1,20 +1,17 @@
-import { Models } from 'appwrite';
-
-// Types for test connection responses
 export interface ConnectionTestResult {
   success: boolean;
-  collections?: Models.DefaultDocument[];
+  collections?: any[];
   error?: unknown;
 }
 
 export interface SeedingResult {
   success: boolean;
-  categories?: Models.DefaultDocument[];
-  businesses?: Models.DefaultDocument[];
+  message?: string;
   error?: unknown;
 }
 
 export interface ClearDatabaseResult {
   success: boolean;
+  message?: string;
   error?: unknown;
 }

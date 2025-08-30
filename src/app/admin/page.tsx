@@ -80,12 +80,12 @@ export default function AdminDashboard() {
 
   // Redirect if not admin
   useEffect(() => {
-    if (user && user.role !== "admin") {
+    if (user && user.role !== "ADMIN") {
       window.location.href = "/";
     }
   }, [user]);
 
-  if (!user || user.role !== "admin") {
+  if (!user || user.role !== "ADMIN") {
     return null;
   }
 
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
     try {
       await dispatch(
         assignBusinessOwner({
-          businessId: selectedBusiness.$id,
+                      businessId: selectedBusiness.id,
           ownerEmail: ownerEmail.trim(),
         })
       ).unwrap();
@@ -137,9 +137,9 @@ export default function AdminDashboard() {
       string,
       "default" | "secondary" | "destructive" | "outline"
     > = {
-      admin: "destructive",
-      business_owner: "secondary",
-      customer: "default",
+      ADMIN: "destructive",
+      BUSINESS_OWNER: "secondary",
+      CUSTOMER: "default",
     };
     return <Badge variant={variants[role] || "outline"}>{role}</Badge>;
   };
@@ -183,8 +183,8 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{users.length}</div>
               <p className="text-xs text-muted-foreground">
-                {users.filter((u) => u.role === "customer").length} customers,{" "}
-                {users.filter((u) => u.role === "business_owner").length}{" "}
+                {users.filter((u) => u.role === "CUSTOMER").length} customers,{" "}
+                {users.filter((u) => u.role === "BUSINESS_OWNER").length}{" "}
                 business owners
               </p>
             </CardContent>
@@ -249,36 +249,36 @@ export default function AdminDashboard() {
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
-                    <TableRow key={user.$id}>
+                                            <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell>
-                        {new Date(user.createdAt).toLocaleDateString()}
+                                                 {user.createdAt instanceof Date ? user.createdAt.toLocaleDateString() : new Date(user.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Select
                             value={user.role}
                             onValueChange={(value) =>
-                              handleUpdateUserRole(user.$id, value)
+                                                              handleUpdateUserRole(user.id, value)
                             }
                           >
                             <SelectTrigger className="w-32">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="customer">Customer</SelectItem>
-                              <SelectItem value="business_owner">
+                              <SelectItem value="CUSTOMER">Customer</SelectItem>
+                              <SelectItem value="BUSINESS_OWNER">
                                 Business Owner
                               </SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="ADMIN">Admin</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeleteUser(user.$id)}
+                            onClick={() => handleDeleteUser(user.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -314,9 +314,9 @@ export default function AdminDashboard() {
                 </TableHeader>
                 <TableBody>
                   {allBusinesses.map((business) => {
-                    const owner = users.find((u) => u.$id === business.ownerId);
+                                            const owner = users.find((u) => u.id === business.ownerId);
                     return (
-                      <TableRow key={business.$id}>
+                                              <TableRow key={business.id}>
                         <TableCell className="font-medium">
                           {business.name}
                         </TableCell>
@@ -334,7 +334,7 @@ export default function AdminDashboard() {
                               size="sm"
                               onClick={() =>
                                 handleToggleBusinessStatus(
-                                  business.$id,
+                                  business.id,
                                   business.isActive
                                 )
                               }
@@ -397,7 +397,7 @@ export default function AdminDashboard() {
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => handleDeleteBusiness(business.$id)}
+                              onClick={() => handleDeleteBusiness(business.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

@@ -1,20 +1,19 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { databases, DATABASE_ID, COLLECTIONS } from '@/lib/appwrite';
 import { BookingsState, Booking } from '@/lib/types';
-import { ID, Query } from 'appwrite';
 
 // Async thunks
 export const fetchBookings = createAsyncThunk(
     'bookings/fetchBookings',
     async (_, { rejectWithValue }) => {
         try {
-            const response = await databases.listDocuments(
-                DATABASE_ID,
-                COLLECTIONS.BOOKINGS
-            );
-            return response.documents as unknown as Booking[];
-            } catch (error: unknown) {
-                if (error instanceof Error) {
+            const response = await fetch('/api/database?action=list&model=bookings');
+            if (!response.ok) {
+                throw new Error('Failed to fetch bookings');
+            }
+            const data = await response.json();
+            return data.data || [];
+        } catch (error: unknown) {
+            if (error instanceof Error) {
                 return rejectWithValue(error.message);
             }
             return rejectWithValue("An unknown error occurred");
@@ -26,12 +25,12 @@ export const fetchUserBookings = createAsyncThunk(
     'bookings/fetchUserBookings',
     async (userId: string, { rejectWithValue }) => {
         try {
-            const response = await databases.listDocuments(
-                DATABASE_ID,
-                COLLECTIONS.BOOKINGS,
-                [Query.equal('customerId', userId)]
-            );
-            return response.documents as unknown as Booking[];
+            const response = await fetch(`/api/database?action=list&model=bookings&userId=${userId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch user bookings');
+            }
+            const data = await response.json();
+            return data.data || [];
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -45,12 +44,12 @@ export const fetchBusinessBookings = createAsyncThunk(
     'bookings/fetchBusinessBookings',
     async (businessId: string, { rejectWithValue }) => {
         try {
-            const response = await databases.listDocuments(
-                DATABASE_ID,
-                COLLECTIONS.BOOKINGS,
-                [Query.equal('businessId', businessId)]
-            );
-            return response.documents as unknown as Booking[];
+            const response = await fetch(`/api/database?action=list&model=bookings&businessId=${businessId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch business bookings');
+            }
+            const data = await response.json();
+            return data.data || [];
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -62,19 +61,24 @@ export const fetchBusinessBookings = createAsyncThunk(
 
 export const createBooking = createAsyncThunk(
     'bookings/createBooking',
-    async (bookingData: Omit<Booking, '$id' | 'createdAt' | 'updatedAt'>, { rejectWithValue }) => {
+    async (bookingData: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>, { rejectWithValue }) => {
         try {
-            const response = await databases.createDocument(
-                DATABASE_ID,
-                COLLECTIONS.BOOKINGS,
-                ID.unique(),
-                {
-                    ...bookingData,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                }
-            );
-            return response as unknown as Booking;
+            const response = await fetch('/api/database', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'create',
+                    model: 'bookings',
+                    data: bookingData,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to create booking');
+            }
+            const data = await response.json();
+            return data.data;
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -88,16 +92,23 @@ export const updateBookingStatus = createAsyncThunk(
     'bookings/updateBookingStatus',
     async ({ bookingId, status }: { bookingId: string; status: Booking['status'] }, { rejectWithValue }) => {
         try {
-            const response = await databases.updateDocument(
-                DATABASE_ID,
-                COLLECTIONS.BOOKINGS,
-                bookingId,
-                {
-                    status,
-                    updatedAt: new Date().toISOString()
-                }
-            );
-            return response as unknown as Booking;
+            const response = await fetch('/api/database', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'update',
+                    model: 'bookings',
+                    id: bookingId,
+                    data: { status },
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to update booking status');
+            }
+            const data = await response.json();
+            return data.data;
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -111,16 +122,23 @@ export const cancelBooking = createAsyncThunk(
     'bookings/cancelBooking',
     async (bookingId: string, { rejectWithValue }) => {
         try {
-            const response = await databases.updateDocument(
-                DATABASE_ID,
-                COLLECTIONS.BOOKINGS,
-                bookingId,
-                {
-                    status: 'cancelled',
-                    updatedAt: new Date().toISOString()
-                }
-            );
-            return response as unknown as Booking;
+            const response = await fetch('/api/database', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'update',
+                    model: 'bookings',
+                    id: bookingId,
+                    data: { status: 'cancelled' },
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to cancel booking');
+            }
+            const data = await response.json();
+            return data.data;
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -219,11 +237,11 @@ const bookingsSlice = createSlice({
             })
             .addCase(updateBookingStatus.fulfilled, (state, action) => {
                 state.isLoading = false;
-                const index = state.bookings.findIndex(b => b.$id === action.payload.$id);
+                const index = state.bookings.findIndex(b => b.id === action.payload.id);
                 if (index !== -1) {
                     state.bookings[index] = action.payload;
                 }
-                const userIndex = state.userBookings.findIndex(b => b.$id === action.payload.$id);
+                const userIndex = state.userBookings.findIndex(b => b.id === action.payload.id);
                 if (userIndex !== -1) {
                     state.userBookings[userIndex] = action.payload;
                 }
@@ -240,11 +258,11 @@ const bookingsSlice = createSlice({
             })
             .addCase(cancelBooking.fulfilled, (state, action) => {
                 state.isLoading = false;
-                const index = state.bookings.findIndex(b => b.$id === action.payload.$id);
+                const index = state.bookings.findIndex(b => b.id === action.payload.id);
                 if (index !== -1) {
                     state.bookings[index] = action.payload;
                 }
-                const userIndex = state.userBookings.findIndex(b => b.$id === action.payload.$id);
+                const userIndex = state.userBookings.findIndex(b => b.id === action.payload.id);
                 if (userIndex !== -1) {
                     state.userBookings[userIndex] = action.payload;
                 }

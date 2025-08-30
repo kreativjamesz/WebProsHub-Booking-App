@@ -120,8 +120,8 @@ export default function HomePage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {categories.slice(0, 8).map((category) => (
                 <Link
-                  key={category.$id}
-                  href={`/businesses?category=${category.$id}`}
+                                              key={category.id}
+                            href={`/businesses?category=${category.id}`}
                 >
                   <Card className="text-center hover:shadow-lg transition-shadow cursor-pointer">
                     <CardContent className="p-6">
@@ -170,7 +170,7 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredBusinesses.map((business) => (
-                <Link key={business.$id} href={`/businesses/${business.$id}`}>
+                                        <Link key={business.id} href={`/businesses/${business.id}`}>
                   <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                     <div className="h-48 bg-gray-200 rounded-t-lg flex items-center justify-center">
                       {business.logo ? (
@@ -253,7 +253,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredPromos.map((promo) => (
                 <Card
-                  key={promo.$id}
+                                          key={promo.id}
                   className="border-2 border-orange-200 hover:shadow-lg transition-shadow"
                 >
                   <div className="h-32 bg-gradient-to-r from-orange-400 to-red-400 rounded-t-lg flex items-center justify-center">
@@ -272,7 +272,7 @@ export default function HomePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-sm text-gray-500 mb-3">
-                      Valid until {new Date(promo.endDate).toLocaleDateString()}
+                                              Valid until {promo.endDate instanceof Date ? promo.endDate.toLocaleDateString() : new Date(promo.endDate).toLocaleDateString()}
                     </div>
                     <Button className="w-full" variant="outline">
                       View Details

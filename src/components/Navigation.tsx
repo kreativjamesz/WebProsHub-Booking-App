@@ -34,19 +34,22 @@ export function Navigation() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    // Only try to get current user ONCE on mount, never retry
-    if (!hasCheckedAuth && !isAuthenticated && !isLoading) {
+    // Only check auth ONCE on mount, and only if we haven't already
+    if (!hasCheckedAuth) {
       setHasCheckedAuth(true);
-      dispatch(getCurrentUser());
+      
+      // Don't automatically check auth for guests
+      // Only check if user explicitly tries to access protected features
+      // This prevents 401 errors on public pages
     }
-  }, [hasCheckedAuth, isAuthenticated, isLoading, dispatch]);
+  }, [hasCheckedAuth]);
 
   const handleLogout = () => {
     try {
       dispatch(logoutUser());
       setIsMobileMenuOpen(false);
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       // Fallback: just close mobile menu
       setIsMobileMenuOpen(false);
     }
@@ -92,7 +95,7 @@ export function Navigation() {
             >
               Test Connection
             </Link>
-            {isAuthenticated && user?.role === "business_owner" && (
+            {isAuthenticated && user?.role === "BUSINESS_OWNER" && (
               <Link
                 href="/business/dashboard"
                 className="text-gray-700 hover:text-blue-600 transition-colors"
@@ -100,7 +103,7 @@ export function Navigation() {
                 Business Dashboard
               </Link>
             )}
-            {isAuthenticated && user?.role === "admin" && (
+            {isAuthenticated && user?.role === "ADMIN" && (
               <Link
                 href="/admin"
                 className="text-gray-700 hover:text-blue-600 transition-colors"
@@ -154,7 +157,7 @@ export function Navigation() {
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  {user?.role === "business_owner" && (
+                  {user?.role === "BUSINESS_OWNER" && (
                     <DropdownMenuItem asChild>
                       <Link
                         href="/business/dashboard"
@@ -165,7 +168,7 @@ export function Navigation() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {user?.role === "admin" && (
+                  {user?.role === "ADMIN" && (
                     <DropdownMenuItem asChild>
                       <Link href="/admin" className="cursor-pointer">
                         <Settings className="mr-2 h-4 w-4" />
@@ -229,7 +232,7 @@ export function Navigation() {
             >
               Promotions
             </Link>
-            {isAuthenticated && user?.role === "business_owner" && (
+            {isAuthenticated && user?.role === "BUSINESS_OWNER" && (
               <Link
                 href="/business/dashboard"
                 className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
@@ -238,7 +241,7 @@ export function Navigation() {
                 Business Dashboard
               </Link>
             )}
-            {isAuthenticated && user?.role === "admin" && (
+            {isAuthenticated && user?.role === "ADMIN" && (
               <Link
                 href="/admin"
                 className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"

@@ -1,19 +1,17 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { databases, DATABASE_ID, COLLECTIONS } from "../../../appwrite";
 import { BusinessesState, Business } from "../../../types";
-import { ID, Query } from "appwrite";
 
 // Async thunks
 export const fetchBusinesses = createAsyncThunk(
   "businesses/fetchBusinesses",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.BUSINESSES,
-        [Query.equal("isActive", true)]
-      );
-      return response.documents as unknown as Business[];
+      const response = await fetch('/api/database?action=list&model=businesses');
+      if (!response.ok) {
+        throw new Error('Failed to fetch businesses');
+      }
+      const data = await response.json();
+      return data.data || [];
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -27,12 +25,12 @@ export const fetchFeaturedBusinesses = createAsyncThunk(
   "businesses/fetchFeaturedBusinesses",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.BUSINESSES,
-        [Query.equal("isActive", true), Query.orderDesc("rating")]
-      );
-      return response.documents as unknown as Business[];
+      const response = await fetch('/api/database?action=list&model=businesses&featured=true');
+      if (!response.ok) {
+        throw new Error('Failed to fetch featured businesses');
+      }
+      const data = await response.json();
+      return data.data || [];
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -46,12 +44,12 @@ export const fetchBusinessById = createAsyncThunk(
   "businesses/fetchBusinessById",
   async (businessId: string, { rejectWithValue }) => {
     try {
-      const response = await databases.getDocument(
-        DATABASE_ID,
-        COLLECTIONS.BUSINESSES,
-        businessId
-      );
-      return response as unknown as Business;
+      const response = await fetch(`/api/database?action=get&model=businesses&id=${businessId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch business');
+      }
+      const data = await response.json();
+      return data.data;
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -64,21 +62,26 @@ export const fetchBusinessById = createAsyncThunk(
 export const createBusiness = createAsyncThunk(
   "businesses/createBusiness",
   async (
-    businessData: Omit<Business, "$id" | "createdAt" | "updatedAt">,
+            businessData: Omit<Business, "id" | "createdAt" | "updatedAt">,
     { rejectWithValue }
   ) => {
     try {
-      const response = await databases.createDocument(
-        DATABASE_ID,
-        COLLECTIONS.BUSINESSES,
-        ID.unique(),
-        {
-          ...businessData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      );
-      return response as unknown as Business;
+      const response = await fetch('/api/database', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create',
+          model: 'businesses',
+          data: businessData,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to create business');
+      }
+      const data = await response.json();
+      return data.data;
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -98,16 +101,23 @@ export const updateBusiness = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTIONS.BUSINESSES,
-        businessId,
-        {
-          ...businessData,
-          updatedAt: new Date().toISOString(),
-        }
-      );
-      return response as unknown as Business;
+      const response = await fetch('/api/database', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'update',
+          model: 'businesses',
+          id: businessId,
+          data: businessData,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update business');
+      }
+      const data = await response.json();
+      return data.data;
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -124,22 +134,18 @@ export const searchBusinesses = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const queries = [Query.equal("isActive", true)];
+      const params = new URLSearchParams();
+      params.append('action', 'search');
+      params.append('model', 'businesses');
+      if (query) params.append('query', query);
+      if (categoryId) params.append('categoryId', categoryId);
 
-      if (query) {
-        queries.push(Query.search("name", query));
+      const response = await fetch(`/api/database?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to search businesses');
       }
-
-      if (categoryId) {
-        queries.push(Query.equal("categoryId", categoryId));
-      }
-
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.BUSINESSES,
-        queries
-      );
-      return response.documents as unknown as Business[];
+      const data = await response.json();
+      return data.data || [];
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -239,12 +245,12 @@ const businessesSlice = createSlice({
       .addCase(updateBusiness.fulfilled, (state, action) => {
         state.isLoading = false;
         const index = state.businesses.findIndex(
-          (b) => b.$id === action.payload.$id
+                      (b) => b.id === action.payload.id
         );
         if (index !== -1) {
           state.businesses[index] = action.payload;
         }
-        if (state.selectedBusiness?.$id === action.payload.$id) {
+                    if (state.selectedBusiness?.id === action.payload.id) {
           state.selectedBusiness = action.payload;
         }
         state.error = null;

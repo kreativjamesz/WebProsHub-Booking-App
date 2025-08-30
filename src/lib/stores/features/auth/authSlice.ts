@@ -1,12 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import {
-  account,
-  databases,
-  DATABASE_ID,
-  COLLECTIONS,
-} from "@/lib/appwrite";
 import { AuthState, User } from "@/lib/types";
-import { ID, Query } from "appwrite";
 
 // Async thunks
 export const loginUser = createAsyncThunk(
@@ -16,21 +9,31 @@ export const loginUser = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const session = await account.createEmailPasswordSession(email, password);
-      const user = await account.get();
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "login",
+          email,
+          password,
+        }),
+      });
 
-      // Get user data from database
-      const userDoc = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.USERS,
-        [Query.equal("$id", user.$id)]
-      );
-
-      if (userDoc.documents.length > 0) {
-        return userDoc.documents[0] as unknown as User;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Login failed");
       }
 
-      throw new Error("User not found in database");
+      const data = await response.json();
+      
+      // Store token in localStorage
+      if (data.token) {
+        localStorage.setItem("authToken", data.token);
+      }
+      
+      return data.user;
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -52,29 +55,38 @@ export const registerUser = createAsyncThunk(
       email: string;
       password: string;
       name: string;
-      role: "customer" | "business_owner" | "admin";
+      role: "CUSTOMER" | "BUSINESS_OWNER" | "ADMIN";
     },
     { rejectWithValue }
   ) => {
     try {
-      const user = await account.create(ID.unique(), email, password, name);
-      await account.createEmailPasswordSession(email, password);
-
-      // Create user document in database
-      const userDoc = await databases.createDocument(
-        DATABASE_ID,
-        COLLECTIONS.USERS,
-        user.$id,
-        {
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "register",
           email,
+          password,
           name,
           role,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      );
+        }),
+      });
 
-      return userDoc as unknown as User;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Registration failed");
+      }
+
+      const data = await response.json();
+      
+      // Store token in localStorage
+      if (data.token) {
+        localStorage.setItem("authToken", data.token);
+      }
+      
+      return data.user;
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
@@ -88,7 +100,23 @@ export const logoutUser = createAsyncThunk(
   "auth/logoutUser",
   async (_, { rejectWithValue }) => {
     try {
-      await account.deleteSession("current");
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "logout",
+        }),
+      });
+
+      // Remove token from localStorage
+      localStorage.removeItem("authToken");
+
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+
       return null;
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -103,20 +131,25 @@ export const getCurrentUser = createAsyncThunk(
   "auth/getCurrentUser",
   async (_, { rejectWithValue }) => {
     try {
-      const user = await account.get();
-
-      // Get user data from database
-      const userDoc = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.USERS,
-        [Query.equal("$id", user.$id)]
-      );
-
-      if (userDoc.documents.length > 0) {
-        return userDoc.documents[0] as unknown as User;
+      const token = localStorage.getItem("authToken");
+      
+      if (!token) {
+        throw new Error("No authentication token found");
       }
 
-      throw new Error("User not found in database");
+      const response = await fetch("/api/auth", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get current user");
+      }
+
+      const data = await response.json();
+      return data.user;
     } catch (error: unknown) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);

@@ -1,19 +1,17 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { databases, DATABASE_ID, COLLECTIONS } from '@/lib/appwrite';
 import { ServicesState, Service } from '@/lib/types';
-import { ID, Query } from 'appwrite';
 
 // Async thunks
 export const fetchServices = createAsyncThunk(
     'services/fetchServices',
     async (_, { rejectWithValue }) => {
         try {
-            const response = await databases.listDocuments(
-                DATABASE_ID,
-                COLLECTIONS.SERVICES,
-                [Query.equal('isActive', true)]
-            );
-            return response.documents as unknown as Service[];
+            const response = await fetch('/api/database?action=list&model=services');
+            if (!response.ok) {
+                throw new Error('Failed to fetch services');
+            }
+            const data = await response.json();
+            return data.data || [];
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -27,12 +25,12 @@ export const fetchServicesByBusiness = createAsyncThunk(
     'services/fetchServicesByBusiness',
     async (businessId: string, { rejectWithValue }) => {
         try {
-            const response = await databases.listDocuments(
-                DATABASE_ID,
-                COLLECTIONS.SERVICES,
-                [Query.equal('businessId', businessId), Query.equal('isActive', true)]
-            );
-            return response.documents as unknown as Service[];
+            const response = await fetch(`/api/database?action=list&model=services&businessId=${businessId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch services by business');
+            }
+            const data = await response.json();
+            return data.data || [];
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -46,12 +44,12 @@ export const fetchServiceById = createAsyncThunk(
     'services/fetchServiceById',
     async (serviceId: string, { rejectWithValue }) => {
         try {
-            const response = await databases.getDocument(
-                DATABASE_ID,
-                COLLECTIONS.SERVICES,
-                serviceId
-            );
-            return response as unknown as Service;
+            const response = await fetch(`/api/database?action=get&model=services&id=${serviceId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch service');
+            }
+            const data = await response.json();
+            return data.data;
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -63,19 +61,24 @@ export const fetchServiceById = createAsyncThunk(
 
 export const createService = createAsyncThunk(
     'services/createService',
-    async (serviceData: Omit<Service, '$id' | 'createdAt' | 'updatedAt'>, { rejectWithValue }) => {
+    async (serviceData: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>, { rejectWithValue }) => {
         try {
-            const response = await databases.createDocument(
-                DATABASE_ID,
-                COLLECTIONS.SERVICES,
-                ID.unique(),
-                {
-                    ...serviceData,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                }
-            );
-            return response as unknown as Service;
+            const response = await fetch('/api/database', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'create',
+                    model: 'services',
+                    data: serviceData,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to create service');
+            }
+            const data = await response.json();
+            return data.data;
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -89,16 +92,23 @@ export const updateService = createAsyncThunk(
     'services/updateService',
     async ({ serviceId, serviceData }: { serviceId: string; serviceData: Partial<Service> }, { rejectWithValue }) => {
         try {
-            const response = await databases.updateDocument(
-                DATABASE_ID,
-                COLLECTIONS.SERVICES,
-                serviceId,
-                {
-                    ...serviceData,
-                    updatedAt: new Date().toISOString()
-                }
-            );
-            return response as unknown as Service;
+            const response = await fetch('/api/database', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'update',
+                    model: 'services',
+                    id: serviceId,
+                    data: serviceData,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to update service');
+            }
+            const data = await response.json();
+            return data.data;
         } catch (error: unknown) {
             if (error instanceof Error) {
                 return rejectWithValue(error.message);
@@ -112,11 +122,20 @@ export const deleteService = createAsyncThunk(
     'services/deleteService',
     async (serviceId: string, { rejectWithValue }) => {
         try {
-            await databases.deleteDocument(
-                DATABASE_ID,
-                COLLECTIONS.SERVICES,
-                serviceId
-            );
+            const response = await fetch('/api/database', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'delete',
+                    model: 'services',
+                    id: serviceId,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to delete service');
+            }
             return serviceId;
         } catch (error: unknown) {
             if (error instanceof Error) {
@@ -214,11 +233,11 @@ const servicesSlice = createSlice({
             })
             .addCase(updateService.fulfilled, (state, action) => {
                 state.isLoading = false;
-                const index = state.services.findIndex(s => s.$id === action.payload.$id);
-                if (index !== -1) {
-                    state.services[index] = action.payload;
-                }
-                if (state.selectedService?.$id === action.payload.$id) {
+                            const index = state.services.findIndex(s => s.id === action.payload.id);
+            if (index !== -1) {
+                state.services[index] = action.payload;
+            }
+            if (state.selectedService?.id === action.payload.id) {
                     state.selectedService = action.payload;
                 }
                 state.error = null;
@@ -234,8 +253,8 @@ const servicesSlice = createSlice({
             })
             .addCase(deleteService.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.services = state.services.filter(s => s.$id !== action.payload);
-                if (state.selectedService?.$id === action.payload) {
+                            state.services = state.services.filter(s => s.id !== action.payload);
+            if (state.selectedService?.id === action.payload) {
                     state.selectedService = null;
                 }
                 state.error = null;

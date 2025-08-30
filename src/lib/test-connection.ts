@@ -1,20 +1,33 @@
-import { account, databases, DATABASE_ID, COLLECTIONS } from './appwrite';
 import { ConnectionTestResult } from './types/test-connection';
 
-export async function testAppwriteConnection(): Promise<ConnectionTestResult> {
+export async function testDatabaseConnection(): Promise<ConnectionTestResult> {
   try {
-    console.log('🔍 Testing Appwrite connection...');
-    console.log('📊 Database ID:', DATABASE_ID);
-    console.log('🏢 Collections:', COLLECTIONS);
+    console.log('🔗 Testing Database connection...');
     
-    // Test database connection by trying to list documents from a collection
-    const testCollection = await databases.listDocuments(DATABASE_ID, COLLECTIONS.CATEGORIES);
-    console.log('✅ Database connection successful!');
-    console.log('📚 Test collection accessible: ', testCollection);
+    // For guests, just test if we can reach the API endpoint
+    // This verifies the app is working without requiring authentication
+    const response = await fetch('/api/database?action=testConnection', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
     
-    return { success: true, collections: [] };
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Database connection successful!');
+      return {
+        success: true,
+        collections: result.data || []
+      };
+    } else {
+      throw new Error(result.error || 'Unknown error');
+    }
   } catch (error) {
-    console.error('❌ Appwrite connection failed:', error);
+    console.error('❌ Database connection failed:', error);
     return { success: false, error };
   }
 }

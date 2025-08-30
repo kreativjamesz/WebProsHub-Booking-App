@@ -1,0 +1,40 @@
+ENVIRONMENT VARIABLES FOR MY BOOKING APP
+============================================
+
+Copy these variables to your .env file:
+
+# Database Configuration
+DATABASE_URL="mysql://username:password@localhost:3366/my_booking_app"
+
+# JWT Configuration  
+JWT_SECRET="your-super-secret-jwt-key-here-make-it-long-and-random"
+JWT_EXPIRES_IN="7d"
+
+# Next.js Configuration
+NEXTAUTH_SECRET="your-nextauth-secret-key-here"
+NEXTAUTH_URL="http://localhost:3000"
+
+# App Configuration
+NODE_ENV="development"
+APP_NAME="My Booking App"
+APP_URL="http://localhost:3000"
+
+# Optional: External Services (if needed later)
+# STRIPE_SECRET_KEY=""
+# STRIPE_PUBLISHABLE_KEY=""
+# SMTP_HOST=""
+# SMTP_PORT=""
+# SMTP_USER=""
+# SMTP_PASS=""
+
+============================================
+INSTRUCTIONS:
+1. Create a .env file in your project root
+2. Copy the variables above to your .env file
+3. Replace the placeholder values with your actual values
+4. For DATABASE_URL: Update username, password, host, port, and database name
+5. For JWT_SECRET: Generate a random string (at least 32 characters)
+6. For NEXTAUTH_SECRET: Generate another random string
+7. Save the .env file
+
+============================================

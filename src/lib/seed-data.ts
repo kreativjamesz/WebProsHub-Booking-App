@@ -1,242 +1,438 @@
-import { databases, DATABASE_ID, COLLECTIONS, storage, BUCKETS } from './appwrite';
-import { ID } from 'appwrite';
-import { SeedingResult, ClearDatabaseResult } from './types/test-connection';
+import { prisma } from "./database";
+import { Category, Business, Service, Promo, User } from "@/lib/types";
+import { faker } from "@faker-js/faker";
 
-// Sample data generators
-const generateFakeData = () => {
-  const categories = [
-    { name: 'Beauty & Wellness', description: 'Hair salons, spas, nail services' },
-    { name: 'Home Services', description: 'Cleaning, repairs, maintenance' },
-    { name: 'Fitness & Health', description: 'Personal training, yoga, nutrition' },
-    { name: 'Education', description: 'Tutoring, language classes, workshops' },
-    { name: 'Technology', description: 'IT support, web development, consulting' },
-    { name: 'Automotive', description: 'Car wash, repairs, detailing' },
-    { name: 'Food & Catering', description: 'Catering, meal prep, cooking classes' },
-    { name: 'Events & Entertainment', description: 'Party planning, DJ services, photography' }
+// Sample data generators with Faker
+const generateFakeData = (
+  counts: {
+    categories?: number;
+    businesses?: number;
+    services?: number;
+    promos?: number;
+    users?: number;
+  } = {}
+) => {
+  // Set seed for consistent data generation
+  faker.seed(123);
+
+  const categoryNames = [
+    "Beauty & Wellness",
+    "Home Services",
+    "Fitness & Health",
+    "Education",
+    "Technology",
+    "Automotive",
+    "Food & Catering",
+    "Events & Entertainment",
+    "Healthcare",
+    "Legal Services",
+    "Financial Services",
+    "Real Estate",
+    "Transportation",
+    "Pet Services",
+    "Art & Design",
+    "Sports & Recreation",
   ];
 
-  const businesses = [
-    {
-      name: 'Glamour Salon & Spa',
-      description: 'Premium beauty services for all occasions',
-      address: '123 Main Street, Downtown',
-      phone: '+1-555-0123',
-      email: 'info@glamoursalon.com',
-      categoryId: '', // Will be set after categories are created
-      ownerId: '', // Will be set after users are created
-      isActive: true,
-      rating: 4.8,
-      reviewCount: 127
-    },
-    {
-      name: 'TechPro Solutions',
-      description: 'Professional IT consulting and support services',
-      address: '456 Tech Avenue, Business District',
-      phone: '+1-555-0456',
-      email: 'hello@techpro.com',
-      categoryId: '',
-      ownerId: '',
-      isActive: true,
-      rating: 4.9,
-      reviewCount: 89
-    },
-    {
-      name: 'FitLife Studio',
-      description: 'Personal training and group fitness classes',
-      address: '789 Fitness Blvd, Health Center',
-      phone: '+1-555-0789',
-      email: 'train@fitlife.com',
-      categoryId: '',
-      ownerId: '',
-      isActive: true,
-      rating: 4.7,
-      reviewCount: 156
-    }
+  const icons = [
+    "💄",
+    "🏠",
+    "💪",
+    "📚",
+    "💻",
+    "🚗",
+    "🍽️",
+    "🎉",
+    "🏥",
+    "⚖️",
+    "💰",
+    "🏢",
+    "🚌",
+    "🐾",
+    "🎨",
+    "⚽",
+  ];
+  const colors = [
+    "#FF69B4",
+    "#32CD32",
+    "#FF4500",
+    "#4169E1",
+    "#00CED1",
+    "#FF8C00",
+    "#8B4513",
+    "#9370DB",
+    "#20B2AA",
+    "#FF6347",
+    "#FFD700",
+    "#8A2BE2",
+    "#FF1493",
+    "#00FA9A",
+    "#FF69B4",
+    "#32CD32",
   ];
 
-  const services = [
-    {
-      name: 'Haircut & Styling',
-      description: 'Professional haircut and styling service',
-      price: 45.00,
-      duration: 60,
-      businessId: '',
-      categoryId: ''
-    },
-    {
-      name: 'Deep Tissue Massage',
-      description: 'Relaxing therapeutic massage',
-      price: 80.00,
-      duration: 90,
-      businessId: '',
-      categoryId: ''
-    },
-    {
-      name: 'IT Consultation',
-      description: 'Technology strategy and planning',
-      price: 120.00,
-      duration: 120,
-      businessId: '',
-      categoryId: ''
-    },
-    {
-      name: 'Personal Training Session',
-      description: 'One-on-one fitness training',
-      price: 65.00,
-      duration: 60,
-      businessId: '',
-      categoryId: ''
-    }
-  ];
+  // Generate categories
+  const categories: Omit<Category, "id">[] = Array.from(
+    { length: counts.categories || 8 },
+    (_, i) => ({
+      name: categoryNames[i] || faker.commerce.department(),
+      description: faker.lorem.sentence(),
+      icon:
+        icons[i] || faker.helpers.arrayElement(["🌟", "✨", "🔥", "💎", "🎯"]),
+      color: colors[i] || faker.internet.color(),
+      isActive: faker.datatype.boolean(0.9), // 90% chance of being active
+      createdAt: faker.date.past({ years: 2 }),
+      updatedAt: faker.date.recent({ days: 30 }),
+    })
+  );
 
-  const promos = [
-    {
-      title: 'New Customer Special',
-      description: '20% off your first service',
-      discount: 20,
-      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      businessId: '',
-      isActive: true
-    },
-    {
-      title: 'Weekend Discount',
-      description: '15% off all weekend bookings',
-      discount: 15,
-      validUntil: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-      businessId: '',
-      isActive: true
-    }
-  ];
+  // Generate users (including business owners)
+  const users: Omit<User, "id">[] = Array.from(
+    { length: counts.users || 20 },
+    () => ({
+      email: faker.internet.email(),
+      name: faker.person.fullName(),
+      password: undefined, // Will be set by auth system
+      role: faker.helpers.arrayElement(["CUSTOMER", "BUSINESS_OWNER", "ADMIN"]),
+      createdAt: faker.date.past({ years: 1 }),
+      updatedAt: faker.date.recent({ days: 7 }),
+    })
+  );
 
-  return { categories, businesses, services, promos };
+  // Generate businesses
+  const businesses: Omit<Business, "id">[] = Array.from(
+    { length: counts.businesses || 15 },
+    () => ({
+      name: faker.company.name(),
+      description: faker.lorem.paragraph(),
+      logo: `https://picsum.photos/200/200?random=${faker.number.int({ min: 1, max: 1000 })}`,
+      coverImage: `https://picsum.photos/800/400?random=${faker.number.int({ min: 1, max: 1000 })}`,
+      address: faker.location.streetAddress(),
+      city: faker.location.city(),
+      state: faker.location.state({ abbreviated: true }),
+      zipCode: faker.location.zipCode(),
+      phone: faker.phone.number({ style: "international" }),
+      email: faker.internet.email(),
+      website: faker.internet.url(),
+      categoryId: "", // Will be set after categories are created
+      ownerId: "", // Will be set after users are created
+      isActive: faker.datatype.boolean(0.85), // 85% chance of being active
+      rating: faker.number.float({ min: 3.0, max: 5.0, fractionDigits: 1 }),
+      reviewCount: faker.number.int({ min: 0, max: 500 }),
+      createdAt: faker.date.past({ years: 1 }),
+      updatedAt: faker.date.recent({ refDate: new Date().toString() }),
+    })
+  );
+
+  // Generate services
+  const services: Omit<Service, "id">[] = Array.from(
+    { length: counts.services || 50 },
+    () => ({
+      name: faker.commerce.productName(),
+      description: faker.lorem.sentence(),
+      price: faker.number.float({ min: 10, max: 500, fractionDigits: 2 }),
+      duration: faker.helpers.arrayElement([30, 45, 60, 90, 120, 180]), // in minutes
+      businessId: "", // Will be set after businesses are created
+      categoryId: "", // Will be set after categories are created
+      image: `https://picsum.photos/400/300?random=${faker.number.int({ min: 1, max: 1000 })}`,
+      isActive: faker.datatype.boolean(0.9), // 90% chance of being active
+      createdAt: faker.date.past({ years: 1 }),
+      updatedAt: faker.date.recent({ refDate: new Date().toString() }),
+    })
+  );
+
+  // Generate promos
+  const promos: Omit<Promo, "id">[] = Array.from(
+    { length: counts.promos || 25 },
+    () => ({
+      title:
+        faker.commerce.productAdjective() + " " + faker.commerce.productName(),
+      description: faker.lorem.sentence(),
+      discountPercentage: faker.helpers.arrayElement([
+        5, 10, 15, 20, 25, 30, 40, 50,
+      ]),
+      businessId: "", // Will be set after businesses are created
+      startDate: faker.date.recent({ refDate: new Date().toString() }),
+      endDate: faker.date.soon({ days: 90 }),
+      isActive: faker.datatype.boolean(0.8), // 80% chance of being active
+      createdAt: faker.date.past({ refDate: new Date().toString() }),
+      updatedAt: faker.date.recent({ refDate: new Date().toString() }),
+    })
+  );
+
+  return { categories, businesses, services, promos, users };
 };
 
-export async function seedDatabase(): Promise<SeedingResult> {
+interface SeedingResult {
+  success: boolean;
+  categories?: Category[];
+  businesses?: Business[];
+  error?: unknown;
+}
+
+export async function seedDatabase(counts?: {
+  categories?: number;
+  businesses?: number;
+  services?: number;
+  promos?: number;
+  users?: number;
+}): Promise<SeedingResult> {
   try {
-    console.log('🌱 Starting database seeding...');
-    
-    const { categories, businesses, services, promos } = generateFakeData();
-    
-    // 1. Create Categories
-    console.log('📂 Creating categories...');
-    const createdCategories = [];
+    console.log("🌱 Starting database seeding...");
+    console.log(
+      `📊 Generating: ${counts?.categories || 8} categories, ${
+        counts?.businesses || 15
+      } businesses, ${counts?.services || 50} services, ${
+        counts?.promos || 25
+      } promos, ${counts?.users || 20} users`
+    );
+
+    const { categories, businesses, services, promos, users } =
+      generateFakeData(counts);
+
+    // 1. Create Users first (including business owners)
+    console.log("👥 Creating users...");
+    const createdUsers: User[] = [];
+    for (const user of users) {
+      const created = await prisma.user.create({
+        data: user,
+      });
+      createdUsers.push(created);
+      console.log(`✅ Created user: ${created.name} (${created.role})`);
+    }
+
+    // 2. Create Categories
+    console.log("📂 Creating categories...");
+    const createdCategories: Category[] = [];
     for (const category of categories) {
-      const created = await databases.createDocument(
-        DATABASE_ID,
-        COLLECTIONS.CATEGORIES,
-        ID.unique(),
-        {
-          ...category,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      );
+      const created = await prisma.category.create({
+        data: category,
+      });
       createdCategories.push(created);
       console.log(`✅ Created category: ${category.name}`);
     }
 
-    // 2. Create Businesses
-    console.log('🏢 Creating businesses...');
-    const createdBusinesses = [];
+    // 3. Create Businesses (assign random category and owner)
+    console.log("🏢 Creating businesses...");
+    const createdBusinesses: Business[] = [];
     for (const business of businesses) {
-      const category = createdCategories.find(c => 
-        c.name === (business.name.includes('Salon') ? 'Beauty & Wellness' : 
-                   business.name.includes('Tech') ? 'Technology' : 'Fitness & Health')
+      const randomCategory = faker.helpers.arrayElement(createdCategories);
+      const businessOwner = faker.helpers.arrayElement(
+        createdUsers.filter(
+          (u) => u.role === "BUSINESS_OWNER" || u.role === "ADMIN"
+        )
       );
-      
-      const created = await databases.createDocument(
-        DATABASE_ID,
-        COLLECTIONS.BUSINESSES,
-        ID.unique(),
-        {
+
+      const created = await prisma.business.create({
+        data: {
           ...business,
-          categoryId: category?.$id || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      );
+          categoryId: randomCategory.id,
+          ownerId: businessOwner.id,
+        },
+      });
       createdBusinesses.push(created);
-      console.log(`✅ Created business: ${business.name}`);
+      console.log(
+        `✅ Created business: ${business.name} (${randomCategory.name})`
+      );
     }
 
-    // 3. Create Services
-    console.log('🛠️ Creating services...');
+    // 4. Create Services (assign random business and category)
+    console.log("🛠️ Creating services...");
     for (const service of services) {
-      const business = createdBusinesses.find(b => 
-        service.name.includes('Hair') ? b.name.includes('Salon') :
-        service.name.includes('Massage') ? b.name.includes('Salon') :
-        service.name.includes('IT') ? b.name.includes('Tech') :
-        service.name.includes('Training') ? b.name.includes('Fit') : false
-      );
-      
-      const category = createdCategories.find(c => 
-        service.name.includes('Hair') || service.name.includes('Massage') ? c.name === 'Beauty & Wellness' :
-        service.name.includes('IT') ? c.name === 'Technology' :
-        service.name.includes('Training') ? c.name === 'Fitness & Health' : false
-      );
+      const randomBusiness = faker.helpers.arrayElement(createdBusinesses);
+      const randomCategory = faker.helpers.arrayElement(createdCategories);
 
-      await databases.createDocument(
-        DATABASE_ID,
-        COLLECTIONS.SERVICES,
-        ID.unique(),
-        {
+      await prisma.service.create({
+        data: {
           ...service,
-          businessId: business?.$id || '',
-          categoryId: category?.$id || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
+          businessId: randomBusiness.id,
+          categoryId: randomCategory.id,
+        },
+      });
+      console.log(
+        `✅ Created service: ${service.name} for ${randomBusiness.name}`
       );
-      console.log(`✅ Created service: ${service.name}`);
     }
 
-    // 4. Create Promos
-    console.log('🎉 Creating promotions...');
+    // 5. Create Promos (assign random business)
+    console.log("🎉 Creating promotions...");
     for (const promo of promos) {
-      const business = createdBusinesses[Math.floor(Math.random() * createdBusinesses.length)];
-      
-      await databases.createDocument(
-        DATABASE_ID,
-        COLLECTIONS.PROMOS,
-        ID.unique(),
-        {
+      const randomBusiness = faker.helpers.arrayElement(createdBusinesses);
+
+      await prisma.promo.create({
+        data: {
           ...promo,
-          businessId: business?.$id || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
+          businessId: randomBusiness.id,
+        },
+      });
+      console.log(
+        `✅ Created promo: ${promo.title} for ${randomBusiness.name}`
       );
-      console.log(`✅ Created promo: ${promo.title}`);
     }
 
-    console.log('🎊 Database seeding completed successfully!');
-    return { success: true, categories: createdCategories, businesses: createdBusinesses };
-    
+    console.log("🎊 Database seeding completed successfully!");
+    return {
+      success: true,
+      categories: createdCategories,
+      businesses: createdBusinesses,
+    };
   } catch (error) {
-    console.error('❌ Database seeding failed:', error);
+    console.error("❌ Database seeding failed:", error);
     return { success: false, error };
   }
 }
 
-export async function clearDatabase(): Promise<ClearDatabaseResult> {
+export async function createAdminUser(): Promise<{
+  success: boolean;
+  message?: string;
+  error?: unknown;
+}> {
   try {
-    console.log('🧹 Clearing database...');
-    
-    // Clear all collections (be careful with this in production!)
-    const collections = [COLLECTIONS.PROMOS, COLLECTIONS.SERVICES, COLLECTIONS.BUSINESSES, COLLECTIONS.CATEGORIES];
-    
-    for (const collection of collections) {
-      const documents = await databases.listDocuments(DATABASE_ID, collection);
-      for (const doc of documents.documents) {
-        await databases.deleteDocument(DATABASE_ID, collection, doc.$id);
-      }
-      console.log(`🗑️ Cleared collection: ${collection}`);
+    console.log("👑 Creating admin user...");
+
+    // Check if admin user already exists
+    const adminExists = await prisma.user.findFirst({
+      where: { role: "ADMIN" },
+    });
+
+    if (adminExists) {
+      console.log("✅ Admin user already exists");
+      return { success: true, message: "Admin user already exists" };
     }
-    
-    console.log('✅ Database cleared successfully!');
-    return { success: true };
+
+    // Create admin user
+    const adminUser = await prisma.user.create({
+      data: {
+        email: "admin@bookmyservice.com",
+        name: "James Billy Vasig SuperAdmin",
+        role: "ADMIN",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log("✅ Admin user created:", adminUser.id);
+    return {
+      success: true,
+      message: "Admin user created successfully",
+      // Note: Password will need to be set separately through the auth system
+      // You may want to set a default password here or handle it differently
+    };
   } catch (error) {
-    console.error('❌ Database clearing failed:', error);
+    console.error("❌ Failed to create admin user:", error);
     return { success: false, error };
   }
+}
+
+interface ClearDatabaseResult {
+  success: boolean;
+  message?: string;
+  error?: unknown;
+}
+
+export async function clearDatabase(): Promise<ClearDatabaseResult> {
+  try {
+    console.log("🧹 Clearing database...");
+
+    // Clear all collections in reverse order (due to foreign key constraints)
+    await prisma.promo.deleteMany();
+    console.log("✅ Cleared Promo collection");
+
+    await prisma.service.deleteMany();
+    console.log("✅ Cleared Service collection");
+
+    await prisma.booking.deleteMany();
+    console.log("✅ Cleared Booking collection");
+
+    await prisma.business.deleteMany();
+    console.log("✅ Cleared Business collection");
+
+    await prisma.category.deleteMany();
+    console.log("✅ Cleared Category collection");
+
+    await prisma.user.deleteMany();
+    console.log("✅ Cleared User collection");
+
+    console.log("🎉 Database cleared successfully!");
+    return { success: true, message: "Database cleared successfully" };
+  } catch (error) {
+    console.error("❌ Failed to clear database:", error);
+    return { success: false, error };
+  }
+}
+
+// Utility functions for different seeding scenarios
+export async function seedSmallDataset() {
+  return seedDatabase({
+    categories: 5,
+    businesses: 8,
+    services: 25,
+    promos: 12,
+    users: 15,
+  });
+}
+
+export async function seedMediumDataset() {
+  return seedDatabase({
+    categories: 8,
+    businesses: 15,
+    services: 50,
+    promos: 25,
+    users: 30,
+  });
+}
+
+export async function seedLargeDataset() {
+  return seedDatabase({
+    categories: 12,
+    businesses: 25,
+    services: 100,
+    promos: 50,
+    users: 50,
+  });
+}
+
+export async function seedCustomDataset(counts: {
+  categories?: number;
+  businesses?: number;
+  services?: number;
+  promos?: number;
+  users?: number;
+}) {
+  return seedDatabase(counts);
+}
+
+// Main function for CLI usage
+async function main() {
+  const args = process.argv.slice(2);
+  const command = args[0];
+
+  try {
+    switch (command) {
+      case '--small':
+        await seedSmallDataset();
+        break;
+      case '--medium':
+        await seedMediumDataset();
+        break;
+      case '--large':
+        await seedLargeDataset();
+        break;
+      default:
+        // Default to medium dataset
+        await seedMediumDataset();
+        break;
+    }
+    
+    console.log('✅ Seeding completed successfully!');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Seeding failed:', error);
+    process.exit(1);
+  }
+}
+
+// Run main function if this file is executed directly
+if (require.main === module) {
+  main();
 }
