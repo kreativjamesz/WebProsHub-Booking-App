@@ -11,14 +11,16 @@
     "seed:small": "tsx src/lib/seed-data.ts --small",
     "seed:medium": "tsx src/lib/seed-data.ts --medium",
     "seed:large": "tsx src/lib/seed-data.ts --large",
-    "seed:admin": "tsx src/lib/admin-seed-data.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:migrate:reset": "prisma migrate reset --force",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "npm run db:generate && npm run seed:medium",
+    "db:seed": "npm run db:generate && npm run seed",
+    "db:seed:small": "npm run db:generate && npm run seed:small",
+    "db:seed:medium": "npm run db:generate && npm run seed:medium",
+    "db:seed:large": "npm run db:generate && npm run seed:large",
     "db:reset": "npm run db:migrate:reset && npm run db:seed"
   },
   "dependencies": {

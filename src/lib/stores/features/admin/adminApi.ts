@@ -6,9 +6,15 @@ const baseQuery = fetchBaseQuery({
   baseUrl: '/api/admin',
   prepareHeaders: (headers) => {
     const adminToken = getCookie('adminToken');
+    console.log('AdminApi - Token check:', adminToken ? 'Token exists' : 'No token');
+    
     if (adminToken) {
-      headers.set('authorization', `Bearer ${adminToken}`);
+      headers.set('Authorization', `Bearer ${adminToken}`);
+      console.log('AdminApi - Headers set:', headers.get('Authorization'));
+    } else {
+      console.log('AdminApi - No token available');
     }
+    
     headers.set('Content-Type', 'application/json');
     return headers;
   },
@@ -26,6 +32,26 @@ export const adminApi = createApi({
         url: `/users?page=${page}&search=${search}&role=${role}&status=${status}`,
       }),
       providesTags: ['Users'],
+    }),
+
+
+
+    // New RTK Query endpoint for fetching users (to compare with manual fetch)
+    fetchingUsers: builder.query({
+      query: ({ page = 1, search = '', role = 'all', status = 'all' }) => ({
+        url: `/users?page=${page}&search=${search}&role=${role}&status=${status}`,
+      }),
+      providesTags: ['Users'],
+      // Add some logging to see what's happening
+      async onQueryStarted(args, { queryFulfilled }) {
+        console.log('🔄 RTK Query fetchingUsers started with args:', args);
+        try {
+          const result = await queryFulfilled;
+          console.log('✅ RTK Query fetchingUsers successful:', result.data);
+        } catch (error) {
+          console.error('❌ RTK Query fetchingUsers failed:', error);
+        }
+      },
     }),
 
     getUserById: builder.query({
@@ -184,6 +210,7 @@ export const adminApi = createApi({
 export const {
   // Users
   useGetUsersQuery,
+  useFetchingUsersQuery,
   useGetUserByIdQuery,
   useUpdateUserRoleMutation,
   useUpdateUserStatusMutation,

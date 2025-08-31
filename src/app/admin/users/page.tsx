@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  useGetUsersQuery,
-  useUpdateUserRoleMutation,
-  useDeleteUserMutation,
-} from "@/lib/stores/features/admin/adminApi";
+import { useAppSelector, useAppDispatch } from "@/lib/hooks";
+import { fetchUsers, updateUserRole, deleteUser } from "@/lib/stores/features/admin/adminUsersSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,39 +23,54 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { Search, Users, UserCheck, UserX, Building2 } from "lucide-react";
+import { Search, Users, UserCheck, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/lib/types/user";
+import { getCookie } from "@/lib/utils/cookies";
 
 export default function AdminUsersPage() {
+  const dispatch = useAppDispatch();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // RTK Query hooks
-  const {
-    data: usersData,
-    isLoading,
-    error,
-    refetch,
-  } = useGetUsersQuery({
-    page: currentPage,
-    search: searchTerm,
-    role: roleFilter,
-    status: statusFilter,
-  });
+  // Check admin token
+  const adminToken = getCookie('adminToken');
+  console.log('Admin Token:', adminToken ? 'Exists' : 'Missing');
 
-  const [updateUserRole, { isLoading: isUpdatingRole }] =
-    useUpdateUserRoleMutation();
-  const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
+  // Use Redux slice instead of RTK Query (same as dashboard)
+  const {
+    users,
+    isLoadingUsers,
+    error: usersError,
+  } = useAppSelector((state) => state.adminUsers);
+
+  // Fetch users when component mounts or filters change
+  useEffect(() => {
+    if (adminToken) {
+      console.log('Fetching users with Redux slice...');
+      dispatch(fetchUsers({
+        page: currentPage,
+        search: searchTerm,
+        role: roleFilter,
+        status: statusFilter,
+      }));
+    }
+  }, [dispatch, adminToken, currentPage, searchTerm, roleFilter, statusFilter]);
 
   // Handle role update
   const handleRoleUpdate = async (userId: string, newRole: string) => {
     try {
-      await updateUserRole({ userId, role: newRole }).unwrap();
+      await dispatch(updateUserRole({ userId, role: newRole as User["role"] })).unwrap();
       toast.success("User role updated successfully");
-      refetch(); // Refresh the data
+      // Refresh the data
+      dispatch(fetchUsers({
+        page: currentPage,
+        search: searchTerm,
+        role: roleFilter,
+        status: statusFilter,
+      }));
     } catch (error) {
       toast.error("Failed to update user role");
       console.error("Role update error:", error);
@@ -69,9 +81,15 @@ export default function AdminUsersPage() {
   const handleDeleteUser = async (userId: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
       try {
-        await deleteUser(userId).unwrap();
+        await dispatch(deleteUser(userId)).unwrap();
         toast.success("User deleted successfully");
-        refetch(); // Refresh the data
+        // Refresh the data
+        dispatch(fetchUsers({
+          page: currentPage,
+          search: searchTerm,
+          role: roleFilter,
+          status: statusFilter,
+        }));
       } catch (error) {
         toast.error("Failed to delete user");
         console.error("Delete error:", error);
@@ -80,25 +98,21 @@ export default function AdminUsersPage() {
   };
 
   // Calculate statistics
-  const users = usersData?.users || [];
-  const totalUsers = usersData?.pagination?.totalUsers || 0;
-  const totalPages = usersData?.pagination?.totalPages || 1;
-  const customers = users.filter((u: User) => u.role === "CUSTOMER").length;
-  const businessOwners = users.filter(
+  const totalUsers = users?.length || 0;
+  const customers = users?.filter((u: User) => u.role === "CUSTOMER").length || 0;
+  const businessOwners = users?.filter(
     (u: User) => u.role === "BUSINESS_OWNER"
-  ).length;
-  const activeUsers = users.length;
+  ).length || 0;
+  const activeUsers = users?.length || 0;
 
-  if (error) {
+  if (usersError) {
     return (
       <div className="p-6">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center text-red-600">
               Error loading users:{" "}
-              {error
-                ? (error as Error)?.message || "Unknown error"
-                : "Unknown error"}
+              {usersError || "Unknown error"}
             </div>
           </CardContent>
         </Card>
@@ -110,6 +124,11 @@ export default function AdminUsersPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">User Management</h1>
+        <div className="flex items-center space-x-2">
+          <Badge variant={adminToken ? "default" : "destructive"}>
+            {adminToken ? "Authenticated" : "Not Authenticated"}
+          </Badge>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -197,6 +216,15 @@ export default function AdminUsersPage() {
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button onClick={() => dispatch(fetchUsers({
+              page: currentPage,
+              search: searchTerm,
+              role: roleFilter,
+              status: statusFilter,
+            }))} variant="outline">
+              Refresh
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -207,7 +235,7 @@ export default function AdminUsersPage() {
           <CardTitle>Users</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoadingUsers ? (
             <div className="text-center py-8">Loading users...</div>
           ) : (
             <>
@@ -222,7 +250,7 @@ export default function AdminUsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user: User) => (
+                  {users?.map((user: User) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
@@ -249,7 +277,7 @@ export default function AdminUsersPage() {
                             onValueChange={(newRole) =>
                               handleRoleUpdate(user.id, newRole)
                             }
-                            disabled={isUpdatingRole}
+                            disabled={isLoadingUsers}
                           >
                             <SelectTrigger className="w-32">
                               <SelectValue />
@@ -266,7 +294,7 @@ export default function AdminUsersPage() {
                             variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteUser(user.id)}
-                            disabled={isDeleting}
+                            disabled={isLoadingUsers}
                           >
                             Delete
                           </Button>
@@ -276,33 +304,6 @@ export default function AdminUsersPage() {
                   ))}
                 </TableBody>
               </Table>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-4 flex justify-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="flex items-center px-3">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentPage(Math.min(totalPages, currentPage + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
             </>
           )}
         </CardContent>

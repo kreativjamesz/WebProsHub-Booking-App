@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/lib/stores/features/admin/adminAuthSlice";
+import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/admin.api";
+import { useAdminLogoutMutation } from "@/lib/stores/features/admin/adminApi";
 import {
   fetchSystemSettings,
   updateSystemSettings,

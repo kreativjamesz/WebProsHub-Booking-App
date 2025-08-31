@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import jwt from "jsonwebtoken";
+import { config } from "@/lib/config";
 
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "admin-secret-key-change-in-production";
+const ADMIN_JWT_SECRET = config.adminJwt.secret;
 
 export async function GET(request: NextRequest) {
   try {

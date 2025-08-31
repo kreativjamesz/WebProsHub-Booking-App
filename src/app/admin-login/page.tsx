@@ -26,14 +26,14 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Building } from "lucide-react";
-import { useAdminLoginMutation } from "@/lib/stores/features/admin/admin.api";
+import { useAdminLoginMutation } from "@/lib/stores/features/admin/auth/adminAuthApi";
 import { useDispatch } from "react-redux";
 import {
   setAdminUser,
   setAdminToken,
   clearAdminError,
   setAdminError,
-} from "@/lib/stores/features/admin/adminAuthSlice";
+} from "@/lib/stores/features/admin/auth/adminAuthSlice";
 import { setCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
 

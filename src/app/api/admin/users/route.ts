@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import jwt from "jsonwebtoken";
 import { UserRole } from "@/lib/types/user";
+import { config } from "@/lib/config";
 
-const ADMIN_JWT_SECRET =
-  process.env.ADMIN_JWT_SECRET || "admin-secret-key-change-in-production";
+const ADMIN_JWT_SECRET = config.adminJwt.secret;
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     if (!adminUser || !adminUser.isActive) {
       return NextResponse.json(
-        { success: false, error: "Admin user not found or inactive" },
+        { success: false, error: "Admin authentication failed" },
         { status: 401 }
       );
     }
@@ -107,6 +107,15 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Admin users fetch error:", error);
+    
+    // Check if it's an authentication-related error
+    if (error instanceof Error && error.message.includes('Admin authentication failed')) {
+      return NextResponse.json(
+        { success: false, error: "Admin authentication failed" },
+        { status: 401 }
+      );
+    }
+    
     return NextResponse.json(
       { success: false, error: "Failed to fetch users" },
       { status: 500 }

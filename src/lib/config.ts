@@ -6,6 +6,10 @@ export const config = {
     secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-here-make-it-long-and-random',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
+  adminJwt: {
+    secret: process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'your-super-secret-jwt-key-here-make-it-long-and-random',
+    expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '7d',
+  },
   nextauth: {
     secret: process.env.NEXTAUTH_SECRET || 'your-nextauth-secret-key-here',
     url: process.env.NEXTAUTH_URL || 'http://localhost:3000',

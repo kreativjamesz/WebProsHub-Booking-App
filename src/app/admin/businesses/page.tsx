@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/lib/stores/features/admin/adminAuthSlice";
+import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/admin.api";
+import { useAdminLogoutMutation } from "@/lib/stores/features/admin/adminApi";
 import {
   fetchBusinesses,
   deleteBusiness,
@@ -257,14 +257,6 @@ export default function AdminBusinessesPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Error Alert */}
-        {error && (
-          <Alert className="mb-6 border-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
 
         {/* Filters and Search */}
         <Card className="mb-6">

@@ -1,4 +1,5 @@
-// Auth Types for both regular users and admin users
+// Auth Types for regular users only
+// Admin types are now in src/lib/stores/features/admin/admin.types.ts
 
 // Regular User Types
 export interface User {
@@ -18,28 +19,6 @@ export enum UserRole {
   CUSTOMER = "CUSTOMER",
 }
 
-// Admin User Types
-export interface AdminUser {
-  id: string;
-  email: string;
-  name: string;
-  role: AdminRole;
-  department?: string;
-  employeeId?: string;
-  isActive: boolean;
-  permissions: string[];
-  twoFactorEnabled: boolean;
-  lastLoginAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export enum AdminRole {
-  SUPER_ADMIN = "SUPER_ADMIN",
-  MODERATOR = "MODERATOR",
-  SUPPORT = "SUPPORT",
-}
-
 // Auth State Types
 export interface AuthState {
   user: User | null;
@@ -55,21 +34,10 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface AdminLoginRequest {
-  email: string;
-  password: string;
-}
-
 // Auth Response Types
 export interface AuthResponse {
   success: boolean;
   user: User;
-  token: string;
-}
-
-export interface AdminAuthResponse {
-  success: boolean;
-  user: AdminUser;
   token: string;
 }
 

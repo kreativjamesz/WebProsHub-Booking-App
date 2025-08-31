@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { config } from "@/lib/config";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = config.jwt.secret;
 
 export async function POST(request: NextRequest) {
   try {

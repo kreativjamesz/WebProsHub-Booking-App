@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCookie } from "@/lib/utils/cookies";
+import { getCookie, removeCookie } from "@/lib/utils/cookies";
 import { Loader2 } from "lucide-react";
 
 interface AdminAuthGuardProps {
@@ -14,17 +14,60 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if admin token exists in cookies
-    const adminToken = getCookie("adminToken");
-    
-    if (!adminToken) {
-      router.push('/admin-login');
-      return;
-    }
+    const validateAdminToken = async () => {
+      const adminToken = getCookie("adminToken");
+      
+      if (!adminToken) {
+        router.push('/admin-login');
+        return;
+      }
 
-    // For now, we'll trust the token exists
-    // In a real app, you'd validate the token here
-    setIsLoading(false);
+      try {
+        // Validate token by calling the admin-auth API
+        const response = await fetch('/api/admin-auth', {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          // Token is invalid or expired
+          console.log('Admin token validation failed, clearing session...');
+          removeCookie("adminToken");
+          router.push('/admin-login');
+          return;
+        }
+
+        // Token is valid
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error validating admin token:', error);
+        // On any error, clear the token and redirect
+        removeCookie("adminToken");
+        router.push('/admin-login');
+      }
+    };
+
+    validateAdminToken();
+  }, [router]);
+
+  // Global error handler for authentication failures
+  useEffect(() => {
+    const handleGlobalAuthError = (event: CustomEvent) => {
+      if (event.detail?.error?.includes('Admin authentication failed')) {
+        console.log('Global auth error detected, redirecting to login...');
+        removeCookie("adminToken");
+        router.push('/admin-login');
+      }
+    };
+
+    // Listen for global authentication errors
+    window.addEventListener('admin-auth-error', handleGlobalAuthError as EventListener);
+    
+    return () => {
+      window.removeEventListener('admin-auth-error', handleGlobalAuthError as EventListener);
+    };
   }, [router]);
 
   // Show loading while checking authentication
@@ -33,16 +76,10 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Checking authentication...</p>
+          <p className="text-muted-foreground">Validating admin access...</p>
         </div>
       </div>
     );
-  }
-
-  // If not authenticated, don't render children
-  const adminToken = getCookie("adminToken");
-  if (!adminToken) {
-    return null;
   }
 
   return <>{children}</>;

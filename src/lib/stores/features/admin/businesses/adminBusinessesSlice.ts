@@ -1,38 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Business } from '@/lib/types';
 import { getCookie } from '@/lib/utils/cookies';
-
-// Admin businesses management state interface
-export interface AdminBusinessesState {
-  // Data
-  businesses: Business[];
-  selectedBusiness: Business | null;
-  
-  // Loading states
-  isLoadingBusinesses: boolean;
-  isLoadingBusiness: boolean;
-  isUpdatingBusiness: boolean;
-  isDeletingBusiness: boolean;
-  isAssigningOwner: boolean;
-  
-  // Pagination
-  currentPage: number;
-  totalPages: number;
-  totalBusinesses: number;
-  businessesPerPage: number;
-  
-  // Filters and search
-  searchTerm: string;
-  statusFilter: string;
-  categoryFilter: string;
-  cityFilter: string;
-  
-  // Error handling
-  error: string | null;
-  
-  // Success messages
-  successMessage: string | null;
-}
+import { AdminBusinessesState } from './adminBusinesses.types';
 
 const initialState: AdminBusinessesState = {
   businesses: [],
@@ -248,7 +217,18 @@ const adminBusinessesSlice = createSlice({
       })
       .addCase(fetchBusinesses.rejected, (state, action) => {
         state.isLoadingBusinesses = false;
-        state.error = action.error.message || 'Failed to fetch businesses';
+        const errorMessage = action.error.message || 'Failed to fetch businesses';
+        state.error = errorMessage;
+        
+        // Global auth error handling
+        if (errorMessage.includes('Admin authentication failed')) {
+          // Dispatch global auth error event
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('admin-auth-error', {
+              detail: { error: errorMessage }
+            }));
+          }
+        }
       });
     
     // Fetch business by ID

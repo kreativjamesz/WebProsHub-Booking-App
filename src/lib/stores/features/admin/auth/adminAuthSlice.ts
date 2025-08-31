@@ -1,14 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AdminUser } from '@/lib/types';
-
-// Admin authentication state interface
-export interface AdminAuthState {
-  adminUser: AdminUser | null;
-  adminToken: string | null;
-  isAdminAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-}
+import { AdminUser } from '../admin.types';
+import { AdminAuthState } from './adminAuth.types';
 
 const initialState: AdminAuthState = {
   adminUser: null,

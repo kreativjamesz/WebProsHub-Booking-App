@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/lib/types";
-import { clearAdminUser } from "@/lib/stores/features/admin/adminAuthSlice";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/admin.api";
+import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
+import { useAdminLogoutMutation } from "@/lib/stores/features/admin/adminApi";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,46 +12,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { 
   Users, 
   Shield, 
   UserPlus, 
   Search, 
-  Filter, 
   Edit, 
-  Trash2, 
   LogOut, 
   AlertTriangle,
   CheckCircle,
   XCircle,
   Crown,
   UserCheck,
-  UserX
+  Trash2
 } from "lucide-react";
-
-interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string;
-  employeeId: string;
-  permissions: string[];
-  isActive: boolean;
-  lastLogin: string;
-  createdAt: string;
-  lastModified: string;
-}
+import { getCookie } from "@/lib/utils/cookies";
+import { toast } from "sonner";
+import { AdminUser } from "@/lib/types/admin";
 
 export default function AdminsPage() {
   const router = useRouter();
-  const dispatch = useDispatch();
-  const { adminUser } = useSelector((state: RootState) => state.adminAuth);
+  const dispatch = useAppDispatch();
+  const { adminUser } = useAppSelector((state) => state.adminAuth);
   const [adminLogout] = useAdminLogoutMutation();
+
+  // Check admin token
+  const adminToken = getCookie('adminToken');
+  console.log('Admin Token:', adminToken ? 'Exists' : 'Missing');
 
   // Check if user is SUPER_ADMIN
   useEffect(() => {
@@ -61,16 +49,16 @@ export default function AdminsPage() {
     }
   }, [adminUser, router]);
 
-  // Mock data for admins
+  // Mock data for admins (since API isn't fully implemented yet)
   const [admins, setAdmins] = useState<AdminUser[]>([
     {
       id: "admin-1",
       name: "John Admin",
       email: "john.admin@company.com",
-      role: "ADMIN",
+      role: "SUPER_ADMIN",
       department: "IT",
       employeeId: "EMP001",
-      permissions: ["user_management", "business_management", "booking_management"],
+      permissions: ["user_management", "business_management", "booking_management", "admin_management"],
       isActive: true,
       lastLogin: "2024-01-15T10:30:00Z",
       createdAt: "2023-06-01T00:00:00Z",
@@ -80,7 +68,7 @@ export default function AdminsPage() {
       id: "admin-2",
       name: "Sarah Manager",
       email: "sarah.manager@company.com",
-      role: "ADMIN",
+      role: "MODERATOR",
       department: "Operations",
       employeeId: "EMP002",
       permissions: ["business_management", "booking_management"],
@@ -104,15 +92,77 @@ export default function AdminsPage() {
     }
   ]);
 
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    try {
+      await adminLogout().unwrap();
+      dispatch(clearAdminUser());
+      removeCookie("adminToken");
+      adminStorage.clearAdmin();
+      router.push("/admin-login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      dispatch(clearAdminUser());
+      removeCookie("adminToken");
+      adminStorage.clearAdmin();
+      router.push("/admin-login");
+    }
+  };
+
+  const handleCreateAdmin = async (adminData: Omit<AdminUser, 'id' | 'createdAt' | 'lastModified' | 'lastLogin'>) => {
+    try {
+      // Mock creation for now
+      const newAdmin: AdminUser = {
+        ...adminData,
+        id: `admin-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        lastLogin: new Date().toISOString()
+      };
+      setAdmins(prev => [...prev, newAdmin]);
+      toast.success("Admin user created successfully");
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      toast.error("Failed to create admin user");
+      console.error("Create error:", error);
+    }
+  };
+
+  const handleUpdateAdmin = async (adminId: string, updates: Partial<Omit<AdminUser, 'id' | 'createdAt' | 'lastModified' | 'lastLogin'>>) => {
+    try {
+      // Mock update for now
+      setAdmins(prev => prev.map(admin => 
+        admin.id === adminId 
+          ? { ...admin, ...updates, lastModified: new Date().toISOString() }
+          : admin
+      ));
+      toast.success("Admin user updated successfully");
+      setIsEditDialogOpen(false);
+      setSelectedAdmin(null);
+    } catch (error) {
+      toast.error("Failed to update admin user");
+      console.error("Update error:", error);
+    }
+  };
+
+  const handleDeleteAdmin = async (adminId: string) => {
+    if (confirm("Are you sure you want to delete this admin user?")) {
+      try {
+        // Mock deletion for now
+        setAdmins(prev => prev.filter(admin => admin.id !== adminId));
+        toast.success("Admin user deleted successfully");
+      } catch (error) {
+        toast.error("Failed to delete admin user");
+        console.error("Delete error:", error);
+      }
+    }
+  };
 
   // Filter admins based on search and filters
   const filteredAdmins = admins.filter((admin) => {
@@ -125,9 +175,8 @@ export default function AdminsPage() {
     const matchesStatus = statusFilter === "all" || 
       (statusFilter === "active" && admin.isActive) ||
       (statusFilter === "inactive" && !admin.isActive);
-    const matchesDepartment = departmentFilter === "all" || admin.department === departmentFilter;
 
-    return matchesSearch && matchesRole && matchesStatus && matchesDepartment;
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   // Calculate statistics
@@ -136,65 +185,14 @@ export default function AdminsPage() {
   const superAdmins = admins.filter(a => a.role === 'SUPER_ADMIN').length;
   const regularAdmins = admins.filter(a => a.role === 'ADMIN').length;
 
-  const handleLogout = async () => {
-    try {
-      await adminLogout().unwrap();
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    } catch (error) {
-      setError("Failed to logout. Please try again.");
-    }
-  };
-
-  const handleEditAdmin = (admin: AdminUser) => {
-    setSelectedAdmin(admin);
-    setIsEditDialogOpen(true);
-  };
-
-  const handleDeleteAdmin = (admin: AdminUser) => {
-    setSelectedAdmin(admin);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleUpdateAdmin = (updatedAdmin: AdminUser) => {
-    setAdmins(prev => prev.map(admin => 
-      admin.id === updatedAdmin.id ? updatedAdmin : admin
-    ));
-    setIsEditDialogOpen(false);
-    setSelectedAdmin(null);
-  };
-
-  const handleDeleteAdminConfirm = () => {
-    if (selectedAdmin) {
-      setAdmins(prev => prev.filter(admin => admin.id !== selectedAdmin.id));
-      setIsDeleteDialogOpen(false);
-      setSelectedAdmin(null);
-    }
-  };
-
-  const handleCreateAdmin = (newAdmin: Omit<AdminUser, 'id' | 'createdAt' | 'lastModified'>) => {
-    const admin: AdminUser = {
-      ...newAdmin,
-      id: `admin-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString()
-    };
-    setAdmins(prev => [...prev, admin]);
-    setIsCreateDialogOpen(false);
-  };
-
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "SUPER_ADMIN":
         return <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1"><Crown className="h-3 w-3" />Super Admin</Badge>;
-      case "ADMIN":
-        return <Badge className="bg-blue-100 text-blue-800">Admin</Badge>;
+      case "MODERATOR":
+        return <Badge className="bg-blue-100 text-blue-800">Moderator</Badge>;
       case "SUPPORT":
         return <Badge className="bg-green-100 text-green-800">Support</Badge>;
-      case "MODERATOR":
-        return <Badge className="bg-orange-100 text-orange-800">Moderator</Badge>;
       default:
         return <Badge variant="secondary">{role}</Badge>;
     }
@@ -334,12 +332,9 @@ export default function AdminsPage() {
         </div>
 
         {/* Error Alert */}
-        {error && (
-          <Alert className="mb-6">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        {/* This dialog is not directly managed by isEditDialogOpen, so it needs its own state */}
+        {/* For simplicity, we'll keep it as a separate dialog */}
+        {/* This section is removed as per the new_code, as the error alert is no longer present */}
 
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -375,19 +370,6 @@ export default function AdminsPage() {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="IT">IT</SelectItem>
-                <SelectItem value="Operations">Operations</SelectItem>
-                <SelectItem value="Customer Service">Customer Service</SelectItem>
-                <SelectItem value="Marketing">Marketing</SelectItem>
-                <SelectItem value="Finance">Finance</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={() => setIsCreateDialogOpen(true)} className="ml-2">
@@ -442,14 +424,15 @@ export default function AdminsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEditAdmin(admin)}
+                            onClick={() => setSelectedAdmin(admin)}
+                            onDoubleClick={() => handleUpdateAdmin(admin.id, admin)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteAdmin(admin)}
+                            onClick={() => handleDeleteAdmin(admin.id)}
                             className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -494,7 +477,7 @@ export default function AdminsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Role</label>
-                <Select value={selectedAdmin.role} onValueChange={(value) => setSelectedAdmin({...selectedAdmin, role: value})}>
+                                 <Select value={selectedAdmin.role} onValueChange={(value: AdminUser['role']) => setSelectedAdmin({...selectedAdmin, role: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -529,7 +512,7 @@ export default function AdminsPage() {
                 <label className="text-sm font-medium">Active</label>
               </div>
               <div className="flex space-x-2">
-                <Button onClick={() => handleUpdateAdmin(selectedAdmin)}>Update</Button>
+                <Button onClick={() => handleUpdateAdmin(selectedAdmin.id, selectedAdmin)}>Update</Button>
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
               </div>
             </div>
@@ -538,18 +521,26 @@ export default function AdminsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Admin</DialogTitle>
-          </DialogHeader>
-          <p>Are you sure you want to delete {selectedAdmin?.name}? This action cannot be undone.</p>
-          <div className="flex space-x-2">
-            <Button variant="destructive" onClick={handleDeleteAdminConfirm}>Delete</Button>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* This dialog is not directly managed by isEditDialogOpen, so it needs its own state */}
+      {/* For simplicity, we'll keep it as a separate dialog */}
+      {selectedAdmin && (
+        <Dialog open={true} onOpenChange={(open) => {
+          if (!open) {
+            setSelectedAdmin(null);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Admin</DialogTitle>
+            </DialogHeader>
+            <p>Are you sure you want to delete {selectedAdmin.name}? This action cannot be undone.</p>
+            <div className="flex space-x-2">
+              <Button variant="destructive" onClick={() => handleDeleteAdmin(selectedAdmin.id)}>Delete</Button>
+              <Button variant="outline" onClick={() => setSelectedAdmin(null)}>Cancel</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Create Admin Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -569,18 +560,17 @@ function CreateAdminForm({
   onSubmit, 
   onCancel 
 }: { 
-  onSubmit: (admin: Omit<AdminUser, 'id' | 'createdAt' | 'lastModified'>) => void;
+  onSubmit: (admin: Omit<AdminUser, 'id' | 'createdAt' | 'lastModified' | 'lastLogin'>) => void;
   onCancel: () => void;
 }) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Omit<AdminUser, 'id' | 'createdAt' | 'lastModified' | 'lastLogin'>>({
     name: '',
     email: '',
     role: 'ADMIN',
     department: 'IT',
     employeeId: '',
-    permissions: [] as string[],
-    isActive: true,
-    lastLogin: new Date().toISOString()
+    permissions: [],
+    isActive: true
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -617,7 +607,7 @@ function CreateAdminForm({
       </div>
       <div>
         <label className="text-sm font-medium">Role</label>
-        <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+                 <Select value={formData.role} onValueChange={(value: AdminUser['role']) => setFormData({...formData, role: value})}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>

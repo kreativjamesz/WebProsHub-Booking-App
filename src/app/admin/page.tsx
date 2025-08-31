@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/lib/stores/features/admin/adminAuthSlice";
+import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/admin.api";
-import { fetchUsers } from "@/lib/stores/features/admin/adminUsersSlice";
-import { fetchBusinesses } from "@/lib/stores/features/admin/adminBusinessesSlice";
+import { useFetchingUsersQuery } from "@/lib/stores/features/admin/adminApi";
+import { fetchUsers } from "@/lib/stores/features/admin/users/adminUsersSlice";
+import { fetchBusinesses } from "@/lib/stores/features/admin/businesses/adminBusinessesSlice";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { StatCard } from "@/components/admin/StatCard";
 import { ChartCard } from "@/components/admin/ChartCard";
+import { useAdminLogoutMutation } from "@/lib/stores/features/admin/auth/adminAuthApi";
 
 export default function AdminDashboard() {
   const dispatch = useAppDispatch();
@@ -59,6 +60,17 @@ export default function AdminDashboard() {
 
   // RTK Query hook for logout
   const [adminLogout] = useAdminLogoutMutation();
+
+  // RTK Query hook for fetching users (to compare with manual fetch)
+  const {
+    data: rtkUsers,
+    isLoading: isLoadingRtkUsers,
+    error: rtkUsersError,
+    refetch: refetchRtkUsers,
+  } = useFetchingUsersQuery(
+    { page: 1, search: "", role: "all", status: "all" },
+    { skip: true } // Don't fetch automatically, only when button is clicked
+  );
 
   useEffect(() => {
     // Fetch initial data for dashboard
@@ -120,7 +132,8 @@ export default function AdminDashboard() {
                   Admin Dashboard
                 </h1>
                 <p className="text-muted-foreground">
-                  Welcome back, {adminUser?.name}. Here&apos;s your system overview.
+                  Welcome back, {adminUser?.name}. Here&apos;s your system
+                  overview.
                 </p>
               </div>
             </div>
@@ -213,6 +226,82 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* API Test Buttons - Compare Manual Fetch vs RTK Query */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">
+            API Test - Manual Fetch vs RTK Query
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <span>Manual Fetch (Slice)</span>
+                </CardTitle>
+                <CardDescription>
+                  Uses fetchUsers from adminUsersSlice with async thunk
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button
+                  onClick={() => dispatch(fetchUsers({ page: 1 }))}
+                  disabled={isLoadingUsers}
+                  className="w-full"
+                >
+                  {isLoadingUsers ? "Loading..." : "Test Manual Fetch Users"}
+                </Button>
+                <div className="text-sm">
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    {isLoadingUsers ? "Loading..." : "Ready"}
+                  </p>
+                  <p>
+                    <strong>Users Count:</strong> {users?.length || 0}
+                  </p>
+                  <p>
+                    <strong>Error:</strong> {usersError || "None"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <BarChart3 className="h-5 w-5 text-green-600" />
+                  <span>RTK Query</span>
+                </CardTitle>
+                <CardDescription>
+                  Uses useFetchingUsersQuery from adminApi
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button
+                  onClick={() => refetchRtkUsers()}
+                  disabled={isLoadingRtkUsers}
+                  className="w-full"
+                  variant="outline"
+                >
+                  {isLoadingRtkUsers ? "Loading..." : "Test RTK Query Users"}
+                </Button>
+                <div className="text-sm">
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    {isLoadingRtkUsers ? "Loading..." : "Ready"}
+                  </p>
+                  <p>
+                    <strong>Users Count:</strong> {rtkUsers?.length || 0}
+                  </p>
+                  <p>
+                    <strong>Error:</strong>{" "}
+                    {rtkUsersError ? "Error occurred" : "None"}
+                  </p>
                 </div>
               </CardContent>
             </Card>

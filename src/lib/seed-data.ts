@@ -1,449 +1,309 @@
-import { prisma } from "./database";
-import { Category, Business, Service, Promo, User } from "@/lib/types";
 import { faker } from "@faker-js/faker";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { AdminRole } from "@/lib/stores/features/admin/admin.types";
+import { UserRole } from "@/lib/stores/features/auth/auth.types";
+import { BookingStatus } from "@/lib/stores/features/admin/bookings/bookings.types";
 
-// Sample data generators with Faker
-const generateFakeData = (
-  counts: {
-    categories?: number;
-    businesses?: number;
-    services?: number;
-    promos?: number;
-    users?: number;
-  } = {}
-) => {
-  // Set seed for consistent data generation
-  faker.seed(123);
+const prisma = new PrismaClient();
 
-  const categoryNames = [
-    "Beauty & Wellness",
-    "Home Services",
-    "Fitness & Health",
-    "Education",
-    "Technology",
-    "Automotive",
-    "Food & Catering",
-    "Events & Entertainment",
-    "Healthcare",
-    "Legal Services",
-    "Financial Services",
-    "Real Estate",
-    "Transportation",
-    "Pet Services",
-    "Art & Design",
-    "Sports & Recreation",
-  ];
-
-  const icons = [
-    "💄",
-    "🏠",
-    "💪",
-    "📚",
-    "💻",
-    "🚗",
-    "🍽️",
-    "🎉",
-    "🏥",
-    "⚖️",
-    "💰",
-    "🏢",
-    "🚌",
-    "🐾",
-    "🎨",
-    "⚽",
-  ];
-  const colors = [
-    "#FF69B4",
-    "#32CD32",
-    "#FF4500",
-    "#4169E1",
-    "#00CED1",
-    "#FF8C00",
-    "#8B4513",
-    "#9370DB",
-    "#20B2AA",
-    "#FF6347",
-    "#FFD700",
-    "#8A2BE2",
-    "#FF1493",
-    "#00FA9A",
-    "#FF69B4",
-    "#32CD32",
-  ];
-
-  // Generate categories
-  const categories: Omit<Category, "id">[] = Array.from(
-    { length: counts.categories || 8 },
-    (_, i) => ({
-      name: categoryNames[i] || faker.commerce.department(),
-      description: faker.lorem.sentence(),
-      icon:
-        icons[i] || faker.helpers.arrayElement(["🌟", "✨", "🔥", "💎", "🎯"]),
-      color: colors[i] || faker.internet.color(),
-      isActive: faker.datatype.boolean(0.9), // 90% chance of being active
-      createdAt: faker.date.past({ years: 2 }),
-      updatedAt: faker.date.recent({ days: 30 }),
-    })
-  );
-
-  // Generate users (including business owners)
-  const users: Omit<User, "id">[] = Array.from(
-    { length: counts.users || 20 },
-    () => ({
-      email: faker.internet.email(),
-      name: faker.person.fullName(),
-      password: "!Password123", // Default password for seeded users
-      role: faker.helpers.arrayElement(["CUSTOMER", "BUSINESS_OWNER"]),
-      createdAt: faker.date.past({ years: 1 }),
-      updatedAt: faker.date.recent({ days: 7 }),
-    })
-  );
-
-  // Generate businesses
-  const businesses: Omit<Business, "id">[] = Array.from(
-    { length: counts.businesses || 15 },
-    () => ({
-      name: faker.company.name(),
-      description: faker.lorem.paragraph(),
-      logo: `https://picsum.photos/200/200?random=${faker.number.int({
-        min: 1,
-        max: 1000,
-      })}`,
-      coverImage: `https://picsum.photos/800/400?random=${faker.number.int({
-        min: 1,
-        max: 1000,
-      })}`,
-      address: faker.location.streetAddress(),
-      city: faker.location.city(),
-      state: faker.location.state({ abbreviated: true }),
-      zipCode: faker.location.zipCode(),
-      phone: faker.phone.number({ style: "international" }),
-      email: faker.internet.email(),
-      website: faker.internet.url(),
-      categoryId: "", // Will be set after categories are created
-      ownerId: "", // Will be set after users are created
-      isActive: faker.datatype.boolean(0.85), // 85% chance of being active
-      rating: faker.number.float({ min: 3.0, max: 5.0, fractionDigits: 1 }),
-      reviewCount: faker.number.int({ min: 0, max: 500 }),
-      createdAt: faker.date.past({ years: 1 }),
-      updatedAt: faker.date.recent({ refDate: new Date().toString() }),
-    })
-  );
-
-  // Generate services
-  const services: Omit<Service, "id">[] = Array.from(
-    { length: counts.services || 50 },
-    () => ({
-      name: faker.commerce.productName(),
-      description: faker.lorem.sentence(),
-      price: faker.number.float({ min: 10, max: 500, fractionDigits: 2 }),
-      duration: faker.helpers.arrayElement([30, 45, 60, 90, 120, 180]), // in minutes
-      businessId: "", // Will be set after businesses are created
-      categoryId: "", // Will be set after categories are created
-      image: `https://picsum.photos/400/300?random=${faker.number.int({
-        min: 1,
-        max: 1000,
-      })}`,
-      isActive: faker.datatype.boolean(0.9), // 90% chance of being active
-      createdAt: faker.date.past({ years: 1 }),
-      updatedAt: faker.date.recent({ refDate: new Date().toString() }),
-    })
-  );
-
-  // Generate promos
-  const promos: Omit<Promo, "id">[] = Array.from(
-    { length: counts.promos || 25 },
-    () => ({
-      title:
-        faker.commerce.productAdjective() + " " + faker.commerce.productName(),
-      description: faker.lorem.sentence(),
-      discountPercentage: faker.helpers.arrayElement([
-        5, 10, 15, 20, 25, 30, 40, 50,
-      ]),
-      businessId: "", // Will be set after businesses are created
-      startDate: faker.date.recent({ refDate: new Date().toString() }),
-      endDate: faker.date.soon({ days: 90 }),
-      isActive: faker.datatype.boolean(0.8), // 80% chance of being active
-      createdAt: faker.date.past({ refDate: new Date().toString() }),
-      updatedAt: faker.date.recent({ refDate: new Date().toString() }),
-    })
-  );
-
-  return { categories, businesses, services, promos, users };
-};
-
-interface SeedingResult {
-  success: boolean;
-  categories?: Category[];
-  businesses?: Business[];
-  error?: unknown;
+// Helper function to get random enum value
+function getRandomEnumValue<T extends Record<string, string>>(enumObj: T): T[keyof T] {
+  const values = Object.values(enumObj) as T[keyof T][];
+  return values[Math.floor(Math.random() * values.length)];
 }
 
-export async function seedDatabase(counts?: {
-  categories?: number;
-  businesses?: number;
-  services?: number;
-  promos?: number;
-  users?: number;
-}): Promise<SeedingResult> {
-  try {
-    console.log("🌱 Starting database seeding...");
-    console.log(
-      `📊 Generating: ${counts?.categories || 8} categories, ${
-        counts?.businesses || 15
-      } businesses, ${counts?.services || 50} services, ${
-        counts?.promos || 25
-      } promos, ${counts?.users || 20} users`
-    );
-
-    const { categories, businesses, services, promos, users } =
-      generateFakeData(counts);
-
-    // 1. Create Users first (including business owners)
-    console.log("👥 Creating users...");
-    const createdUsers: User[] = [];
-    for (const user of users) {
-      const created = await prisma.user.create({
-        data: user,
-      });
-      createdUsers.push(created as User);
-      console.log(`✅ Created user: ${created.name} (${created.role})`);
-    }
-
-    // 2. Create Categories
-    console.log("📂 Creating categories...");
-    const createdCategories: Category[] = [];
-    for (const category of categories) {
-      const created = await prisma.category.create({
-        data: category,
-      });
-      createdCategories.push(created);
-      console.log(`✅ Created category: ${category.name}`);
-    }
-
-    // 3. Create Businesses (assign random category and owner)
-    console.log("🏢 Creating businesses...");
-    const createdBusinesses: Business[] = [];
-    for (const business of businesses) {
-      const randomCategory = faker.helpers.arrayElement(createdCategories);
-      const businessOwner = faker.helpers.arrayElement(
-        createdUsers.filter((u) => u.role === "BUSINESS_OWNER")
-      );
-
-      const created = await prisma.business.create({
-        data: {
-          ...business,
-          categoryId: randomCategory.id,
-          ownerId: businessOwner.id,
-        },
-      });
-      createdBusinesses.push(created as Business);
-      console.log(
-        `✅ Created business: ${business.name} (${randomCategory.name})`
-      );
-    }
-
-    // 4. Create Services (assign random business and category)
-    console.log("🛠️ Creating services...");
-    for (const service of services) {
-      const randomBusiness = faker.helpers.arrayElement(createdBusinesses);
-      const randomCategory = faker.helpers.arrayElement(createdCategories);
-
-      await prisma.service.create({
-        data: {
-          ...service,
-          businessId: randomBusiness.id,
-          categoryId: randomCategory.id,
-        },
-      });
-      console.log(
-        `✅ Created service: ${service.name} for ${randomBusiness.name}`
-      );
-    }
-
-    // 5. Create Promos (assign random business)
-    console.log("🎉 Creating promotions...");
-    for (const promo of promos) {
-      const randomBusiness = faker.helpers.arrayElement(createdBusinesses);
-
-      await prisma.promo.create({
-        data: {
-          ...promo,
-          businessId: randomBusiness.id,
-        },
-      });
-      console.log(
-        `✅ Created promo: ${promo.title} for ${randomBusiness.name}`
-      );
-    }
-
-    console.log("🎊 Database seeding completed successfully!");
-    return {
-      success: true,
-      categories: createdCategories,
-      businesses: createdBusinesses,
-    };
-  } catch (error) {
-    console.error("❌ Database seeding failed:", error);
-    return { success: false, error };
-  }
+// Helper function to get random array element
+function getRandomElement<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
 }
 
-export async function createAdminUser(): Promise<{
-  success: boolean;
-  message?: string;
-  error?: unknown;
-}> {
-  try {
-    console.log("👑 Creating admin user...");
+async function main() {
+  // Get seed size from command line arguments
+  const args = process.argv.slice(2);
+  const seedSize = args.includes('--large') ? 'large' : 
+                   args.includes('--small') ? 'small' : 'medium';
+  
+  console.log(`🌱 Starting database seeding (${seedSize} size)...`);
 
-    // Check if admin user already exists
-    const adminExists = await prisma.adminUser.findFirst({
-      where: { role: "SUPER_ADMIN" },
+  // Clear existing data
+  await prisma.booking.deleteMany();
+  await prisma.service.deleteMany();
+  await prisma.business.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.category.deleteMany();
+  await prisma.adminUser.deleteMany();
+  await prisma.adminAuditLog.deleteMany();
+  await prisma.adminSession.deleteMany();
+
+  console.log("🗑️  Cleared existing data");
+
+  // Create Categories
+  const categories = [
+    {
+      name: "Beauty & Wellness",
+      description: "Salons, spas, and beauty services",
+      icon: "💅",
+      color: "#FF69B4",
+    },
+    {
+      name: "Health & Fitness",
+      description: "Gyms, clinics, and health services",
+      icon: "💪",
+      color: "#32CD32",
+    },
+    {
+      name: "Food & Dining",
+      description: "Restaurants, cafes, and food services",
+      icon: "🍽️",
+      color: "#FF8C00",
+    },
+    {
+      name: "Professional Services",
+      description: "Legal, consulting, and business services",
+      icon: "💼",
+      color: "#4169E1",
+    },
+    {
+      name: "Home & Garden",
+      description: "Cleaning, landscaping, and home services",
+      icon: "🏠",
+      color: "#228B22",
+    },
+    {
+      name: "Education & Training",
+      description: "Schools, tutors, and training centers",
+      icon: "📚",
+      color: "#9932CC",
+    },
+    {
+      name: "Automotive",
+      description: "Car repair, detailing, and automotive services",
+      icon: "🚗",
+      color: "#DC143C",
+    },
+    {
+      name: "Technology",
+      description: "IT services, repair, and tech support",
+      icon: "💻",
+      color: "#00CED1",
+    },
+  ];
+
+  const createdCategories = [];
+  for (const categoryData of categories) {
+    const category = await prisma.category.create({
+      data: categoryData,
     });
+    createdCategories.push(category);
+    console.log(`✅ Created category: ${category.name}`);
+  }
 
-    if (adminExists) {
-      console.log("✅ Admin user already exists");
-      return { success: true, message: "Admin user already exists" };
-    }
+  // Create Users (Customers and Business Owners)
+  const createdUsers = [];
+  const createdBusinesses = [];
+  const createdServices = [];
 
-    // Create admin user in AdminUser model
-    const adminUser = await prisma.adminUser.create({
+  // Create customers based on seed size
+  const customerCount = seedSize === 'small' ? 5 : seedSize === 'medium' ? 20 : 50;
+  for (let i = 0; i < customerCount; i++) {
+    const user = await prisma.user.create({
       data: {
-        email: "admin@bookmyservice.com",
-        name: "James Billy Vasig SuperAdmin",
-        password: "!AdminPassword123", // Default password - should be changed
-        role: "SUPER_ADMIN",
-        permissions: JSON.stringify(["*"]), // All permissions
-        department: "System Administration",
-        employeeId: "ADMIN001",
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        email: faker.internet.email(),
+        name: faker.person.fullName(),
+        password: bcrypt.hash("password123", 12).toString(),
+        role: UserRole.CUSTOMER,
       },
     });
-
-    console.log("✅ Admin user created:", adminUser.id);
-    return {
-      success: true,
-      message: "Admin user created successfully",
-      // Note: Password should be changed after first login
-    };
-  } catch (error) {
-    console.error("❌ Failed to create admin user:", error);
-    return { success: false, error };
+    createdUsers.push(user);
   }
-}
 
-interface ClearDatabaseResult {
-  success: boolean;
-  message?: string;
-  error?: unknown;
-}
+  // Create business owners based on seed size
+  const businessOwnerCount = seedSize === 'small' ? 3 : seedSize === 'medium' ? 10 : 25;
+  for (let i = 0; i < businessOwnerCount; i++) {
+    const businessOwner = await prisma.user.create({
+      data: {
+        email: faker.internet.email(),
+        name: faker.person.fullName(),
+        password: bcrypt.hash("password123", 12).toString(),
+        role: UserRole.BUSINESS_OWNER,
+      },
+    });
+    createdUsers.push(businessOwner);
 
-export async function clearDatabase(): Promise<ClearDatabaseResult> {
-  try {
-    console.log("🧹 Clearing database...");
+    // Create business for this owner
+    const business = await prisma.business.create({
+      data: {
+        name: faker.company.name(),
+        description: faker.company.catchPhrase(),
+        logo: faker.image.url(),
+        coverImage: faker.image.url(),
+        address: faker.location.streetAddress(),
+        city: faker.location.city(),
+        state: faker.location.state(),
+        zipCode: faker.location.zipCode(),
+        phone: faker.phone.number(),
+        email: faker.internet.email(),
+        website: faker.internet.url(),
+        categoryId: getRandomElement(createdCategories).id,
+        ownerId: businessOwner.id,
+        isActive: faker.datatype.boolean(), // 80% active
+        rating: parseFloat(
+          faker.number.float({ min: 1, max: 5, fractionDigits: 1 }).toFixed(1)
+        ),
+        reviewCount: faker.number.int({ min: 0, max: 100 }),
+      },
+    });
+    createdBusinesses.push(business);
 
-    // Clear all collections in reverse order (due to foreign key constraints)
-    await prisma.promo.deleteMany();
-    console.log("✅ Cleared Promo collection");
-
-    await prisma.service.deleteMany();
-    console.log("✅ Cleared Service collection");
-
-    await prisma.booking.deleteMany();
-    console.log("✅ Cleared Booking collection");
-
-    await prisma.business.deleteMany();
-    console.log("✅ Cleared Business collection");
-
-    await prisma.category.deleteMany();
-    console.log("✅ Cleared Category collection");
-
-    await prisma.user.deleteMany();
-    console.log("✅ Cleared User collection");
-
-    console.log("🎉 Database cleared successfully!");
-    return { success: true, message: "Database cleared successfully" };
-  } catch (error) {
-    console.error("❌ Failed to clear database:", error);
-    return { success: false, error };
-  }
-}
-
-// Utility functions for different seeding scenarios
-export async function seedSmallDataset() {
-  return seedDatabase({
-    categories: 5,
-    businesses: 8,
-    services: 25,
-    promos: 12,
-    users: 15,
-  });
-}
-
-export async function seedMediumDataset() {
-  return seedDatabase({
-    categories: 8,
-    businesses: 15,
-    services: 50,
-    promos: 25,
-    users: 30,
-  });
-}
-
-export async function seedLargeDataset() {
-  return seedDatabase({
-    categories: 12,
-    businesses: 25,
-    services: 100,
-    promos: 50,
-    users: 50,
-  });
-}
-
-export async function seedCustomDataset(counts: {
-  categories?: number;
-  businesses?: number;
-  services?: number;
-  promos?: number;
-  users?: number;
-}) {
-  return seedDatabase(counts);
-}
-
-// Main function for CLI usage
-async function main() {
-  const args = process.argv.slice(2);
-  const command = args[0];
-
-  try {
-    switch (command) {
-      case "--small":
-        await seedSmallDataset();
-        break;
-      case "--medium":
-        await seedMediumDataset();
-        break;
-      case "--large":
-        await seedLargeDataset();
-        break;
-      default:
-        // Default to medium dataset
-        await seedMediumDataset();
-        break;
+    // Create services based on seed size
+    const serviceCount = seedSize === 'small' ? 
+      faker.number.int({ min: 2, max: 4 }) : 
+      seedSize === 'medium' ? 
+      faker.number.int({ min: 3, max: 8 }) : 
+      faker.number.int({ min: 5, max: 12 });
+    for (let j = 0; j < serviceCount; j++) {
+      const service = await prisma.service.create({
+        data: {
+          name: faker.commerce.productName(),
+          description: faker.commerce.productDescription(),
+          price: parseFloat(
+            faker.number
+              .float({ min: 10, max: 500, fractionDigits: 2 })
+              .toFixed(2)
+          ),
+          duration: faker.number.int({ min: 15, max: 180, multipleOf: 15 }), // 15 min intervals
+          businessId: business.id,
+          categoryId: business.categoryId,
+          image: faker.image.url(),
+          isActive: faker.datatype.boolean(), // 90% active
+        },
+      });
+      createdServices.push(service);
     }
-
-    console.log("✅ Seeding completed successfully!");
-    process.exit(0);
-  } catch (error) {
-    console.error("❌ Seeding failed:", error);
-    process.exit(1);
   }
+
+  console.log(`✅ Created ${createdUsers.length} users`);
+  console.log(`✅ Created ${createdBusinesses.length} businesses`);
+  console.log(`✅ Created ${createdServices.length} services`);
+
+  // Create Bookings based on seed size
+  const createdBookings = [];
+  const bookingCount = seedSize === 'small' ? 15 : seedSize === 'medium' ? 50 : 150;
+  for (let i = 0; i < bookingCount; i++) {
+    const randomUser = getRandomElement(
+      createdUsers.filter((u) => u.role === UserRole.CUSTOMER)
+    );
+    const randomBusiness = getRandomElement(
+      createdBusinesses.filter((b) => b.isActive)
+    );
+    const businessServices = createdServices.filter(
+      (s) => s.businessId === randomBusiness.id
+    );
+
+    if (businessServices.length > 0) {
+      const randomService = getRandomElement(businessServices);
+
+      const booking = await prisma.booking.create({
+        data: {
+          userId: randomUser.id,
+          businessId: randomBusiness.id,
+          serviceId: randomService.id,
+          date: faker.date.future(),
+          time: faker.helpers.arrayElement([
+            "09:00",
+            "10:00",
+            "11:00",
+            "14:00",
+            "15:00",
+            "16:00",
+          ]),
+          status: getRandomEnumValue(BookingStatus),
+          notes: faker.datatype.boolean() ? faker.lorem.sentence() : null,
+        },
+      });
+      createdBookings.push(booking);
+    }
+  }
+
+  console.log(`✅ Created ${createdBookings.length} bookings`);
+
+  // Create Admin Users
+  const adminUsers = [
+    {
+      email: "superadmin@mybookingapp.com",
+      name: "Super Admin",
+      role: AdminRole.SUPER_ADMIN,
+      department: "IT",
+      employeeId: "EMP001",
+      permissions: JSON.stringify(["all"]),
+      isActive: true,
+    },
+    {
+      email: "moderator@mybookingapp.com",
+      name: "System Moderator",
+      role: AdminRole.MODERATOR,
+      department: "Operations",
+      employeeId: "EMP002",
+      permissions: JSON.stringify([
+        "user_management",
+        "business_management",
+        "booking_management",
+      ]),
+      isActive: true,
+    },
+    {
+      email: "support@mybookingapp.com",
+      name: "Customer Support",
+      role: AdminRole.SUPPORT,
+      department: "Customer Service",
+      employeeId: "EMP003",
+      permissions: JSON.stringify(["booking_management"]),
+      isActive: true,
+    },
+  ];
+
+  for (const adminData of adminUsers) {
+    // Hash password properly for each admin user
+    const hashedPassword = await bcrypt.hash("password123", 12);
+    
+    const admin = await prisma.adminUser.create({
+      data: {
+        ...adminData,
+        password: hashedPassword,
+      },
+    });
+    console.log(`✅ Created admin: ${admin.name} (${admin.role})`);
+  }
+
+  console.log("🎉 Database seeding completed successfully!");
+  console.log("\n📊 Summary:");
+  console.log(`   • ${createdCategories.length} categories`);
+  console.log(
+    `   • ${createdUsers.length} users (${
+      createdUsers.filter((u) => u.role === UserRole.CUSTOMER).length
+    } customers, ${
+      createdUsers.filter((u) => u.role === UserRole.BUSINESS_OWNER).length
+    } business owners)`
+  );
+  console.log(`   • ${createdBusinesses.length} businesses`);
+  console.log(`   • ${createdServices.length} services`);
+  console.log(`   • ${createdBookings.length} bookings`);
+  console.log(`   • ${adminUsers.length} admin users`);
+
+  console.log("\n🔑 Default login credentials:");
+  console.log('   • Customer/User: any customer email + "password123"');
+  console.log('   • Business Owner: any business owner email + "password123"');
+  console.log('   • Super Admin: superadmin@mybookingapp.com + "password123"');
+  console.log('   • Moderator: moderator@mybookingapp.com + "password123"');
+  console.log('   • Support: support@mybookingapp.com + "password123"');
 }
 
-// Run main function if this file is executed directly
-if (require.main === module) {
-  main();
-}
+main()
+  .catch((e) => {
+    console.error("❌ Error during seeding:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
