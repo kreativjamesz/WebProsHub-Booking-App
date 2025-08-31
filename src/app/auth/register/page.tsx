@@ -7,13 +7,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppSelector, useAppDispatch } from '@/lib/hooks';
-import { registerUser, clearError } from '@/lib/stores/features/auth/authSlice';
+import { clearError, setUser, setToken } from '@/lib/stores/features/auth/authSlice';
+import { useRegisterMutation } from '@/lib/stores/features/auth/auth.api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Loader2, User, Building } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Eye, EyeOff, Loader2, User, Building, Mail, Lock, UserPlus, ArrowRight, Users, Store } from 'lucide-react';
 
 const registerSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -33,7 +35,10 @@ export default function RegisterPage() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const { isLoading, error, isAuthenticated } = useAppSelector(state => state.auth);
+    const { error, isAuthenticated } = useAppSelector(state => state.auth);
+    
+    // RTK Query hook
+    const [registerUser, { isLoading }] = useRegisterMutation();
 
     const {
         register,
@@ -63,7 +68,24 @@ export default function RegisterPage() {
 
     const onSubmit = async (data: RegisterFormData) => {
         const { confirmPassword, ...registerData } = data;
-        dispatch(registerUser(registerData));
+        
+        try {
+            dispatch(clearError());
+            const result = await registerUser(registerData).unwrap();
+            
+            // Store in Redux store
+            dispatch(setUser(result.user));
+            dispatch(setToken(result.token));
+            
+            // Redirect to home page
+            router.push('/');
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                dispatch(setError(error.message));
+            } else {
+                dispatch(setError("Registration failed"));
+            }
+        }
     };
 
     if (isAuthenticated) {
@@ -71,159 +93,173 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold text-gray-900">Create your account</h1>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Join us and start your journey
-                    </p>
+                {/* Header */}
+                <div className="text-center space-y-4">
+                    <div className="flex justify-center">
+                        <div className="p-3 bg-primary/10 rounded-full">
+                            <Building className="h-8 w-8 text-primary" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <h1 className="text-3xl font-bold tracking-tight">Create your account</h1>
+                        <p className="text-muted-foreground">
+                            Join us and start your journey
+                        </p>
+                    </div>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Sign Up</CardTitle>
-                        <CardDescription>
+                {/* Register Form */}
+                <Card className="border-2">
+                    <CardHeader className="space-y-2">
+                        <CardTitle className="text-xl text-center">Sign Up</CardTitle>
+                        <CardDescription className="text-center">
                             Fill in your details to create your account
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                             {error && (
-                                <Alert variant="destructive">
+                                <Alert className="border-destructive">
                                     <AlertDescription>{error}</AlertDescription>
                                 </Alert>
                             )}
 
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Full Name</Label>
-                                <Input
-                                    id="name"
-                                    type="text"
-                                    placeholder="Enter your full name"
-                                    {...register('name')}
-                                    className={errors.name ? 'border-red-500' : ''}
-                                />
-                                {errors.name && (
-                                    <p className="text-sm text-red-500">{errors.name.message}</p>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="Enter your email"
-                                    {...register('email')}
-                                    className={errors.email ? 'border-red-500' : ''}
-                                />
-                                {errors.email && (
-                                    <p className="text-sm text-red-500">{errors.email.message}</p>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="password">Password</Label>
-                                <div className="relative">
-                                    <Input
-                                        id="password"
-                                        type={showPassword ? 'text' : 'password'}
-                                        placeholder="Enter your password"
-                                        {...register('password')}
-                                        className={errors.password ? 'border-red-500' : ''}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                                    >
-                                        {showPassword ? (
-                                            <EyeOff className="h-4 w-4 text-gray-400" />
-                                        ) : (
-                                            <Eye className="h-4 w-4 text-gray-400" />
-                                        )}
-                                    </button>
-                                </div>
-                                {errors.password && (
-                                    <p className="text-sm text-red-500">{errors.password.message}</p>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                                <div className="relative">
-                                    <Input
-                                        id="confirmPassword"
-                                        type={showConfirmPassword ? 'text' : 'password'}
-                                        placeholder="Confirm your password"
-                                        {...register('confirmPassword')}
-                                        className={errors.confirmPassword ? 'border-red-500' : ''}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                                    >
-                                        {showConfirmPassword ? (
-                                            <EyeOff className="h-4 w-4 text-gray-400" />
-                                        ) : (
-                                            <Eye className="h-4 w-4 text-gray-400" />
-                                        )}
-                                    </button>
-                                </div>
-                                {errors.confirmPassword && (
-                                    <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Account Type</Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <label className="relative">
-                                        <input
-                                            type="radio"
-                                            value="CUSTOMER"
-                                            {...register('role')}
-                                            className="sr-only"
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name" className="text-sm font-medium">
+                                        Full Name
+                                    </Label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="name"
+                                            placeholder="Enter your full name"
+                                            {...register("name")}
+                                            className={`pl-10 h-11 ${errors.name ? "border-destructive focus:border-destructive" : ""}`}
                                         />
-                                        <div className={`
-                                            cursor-pointer rounded-lg border-2 p-4 text-center transition-all
-                                            ${selectedRole === 'CUSTOMER' 
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                                                : 'border-gray-200 hover:border-gray-300'
-                                            }
-                                        `}>
-                                            <User className="h-6 w-6 mx-auto mb-2" />
-                                            <div className="font-medium">Customer</div>
-                                            <div className="text-sm text-gray-500">Book services</div>
-                                        </div>
-                                    </label>
-                                    <label className="relative">
-                                        <input
-                                            type="radio"
-                                            value="BUSINESS_OWNER"
-                                            {...register('role')}
-                                            className="sr-only"
+                                    </div>
+                                    {errors.name && (
+                                        <p className="text-sm text-destructive">{errors.name.message}</p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="email" className="text-sm font-medium">
+                                        Email Address
+                                    </Label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            placeholder="Enter your email"
+                                            {...register("email")}
+                                            className={`pl-10 h-11 ${errors.email ? "border-destructive focus:border-destructive" : ""}`}
                                         />
-                                        <div className={`
-                                            cursor-pointer rounded-lg border-2 p-4 text-center transition-all
-                                            ${selectedRole === 'BUSINESS_OWNER'
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                                                : 'border-gray-200 hover:border-gray-300'
-                                            }
-                                        `}>
-                                            <Building className="h-6 w-6 mx-auto mb-2" />
-                                            <div className="font-medium">Business Owner</div>
-                                            <div className="text-sm text-gray-500">Offer services</div>
-                                        </div>
-                                    </label>
+                                    </div>
+                                    {errors.email && (
+                                        <p className="text-sm text-destructive">{errors.email.message}</p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="password" className="text-sm font-medium">
+                                        Password
+                                    </Label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="password"
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="Create a password"
+                                            {...register("password")}
+                                            className={`pl-10 pr-10 h-11 ${errors.password ? "border-destructive focus:border-destructive" : ""}`}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute right-0 top-0 h-11 px-3 py-2 hover:bg-transparent"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                        >
+                                            {showPassword ? (
+                                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                            ) : (
+                                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                    {errors.password && (
+                                        <p className="text-sm text-destructive">{errors.password.message}</p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                                        Confirm Password
+                                    </Label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="confirmPassword"
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            placeholder="Confirm your password"
+                                            {...register("confirmPassword")}
+                                            className={`pl-10 pr-10 h-11 ${errors.confirmPassword ? "border-destructive focus:border-destructive" : ""}`}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute right-0 top-0 h-11 px-3 py-2 hover:bg-transparent"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        >
+                                            {showConfirmPassword ? (
+                                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                            ) : (
+                                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                    {errors.confirmPassword && (
+                                        <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Account Type</Label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Button
+                                            type="button"
+                                            variant={selectedRole === 'CUSTOMER' ? 'default' : 'outline'}
+                                            className="h-11 flex items-center space-x-2"
+                                            onClick={() => register('role').onChange({ target: { value: 'CUSTOMER' } })}
+                                        >
+                                            <Users className="h-4 w-4" />
+                                            <span>Customer</span>
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={selectedRole === 'BUSINESS_OWNER' ? 'default' : 'outline'}
+                                            className="h-11 flex items-center space-x-2"
+                                            onClick={() => register('role').onChange({ target: { value: 'BUSINESS_OWNER' } })}
+                                        >
+                                            <Store className="h-4 w-4" />
+                                            <span>Business</span>
+                                        </Button>
+                                    </div>
+                                    <input
+                                        type="hidden"
+                                        {...register("role")}
+                                    />
                                 </div>
                             </div>
 
-                            <Button
-                                type="submit"
-                                className="w-full"
+                            <Button 
+                                type="submit" 
+                                className="w-full h-11" 
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
@@ -232,24 +268,40 @@ export default function RegisterPage() {
                                         Creating account...
                                     </>
                                 ) : (
-                                    'Create Account'
+                                    <>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Create Account
+                                    </>
                                 )}
                             </Button>
                         </form>
-
-                        <div className="mt-6 text-center">
-                            <p className="text-sm text-gray-600">
-                                Already have an account?{' '}
-                                <Link
-                                    href="/auth/login"
-                                    className="font-medium text-blue-600 hover:text-blue-500"
-                                >
-                                    Sign in here
-                                </Link>
-                            </p>
-                        </div>
                     </CardContent>
                 </Card>
+
+                {/* Footer */}
+                <div className="text-center space-y-4">
+                    <Separator />
+                    <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                            Already have an account?{" "}
+                            <Link 
+                                href="/auth/login" 
+                                className="font-medium text-primary hover:underline"
+                            >
+                                Sign in here
+                            </Link>
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            <Link 
+                                href="/" 
+                                className="font-medium text-primary hover:underline flex items-center justify-center space-x-1"
+                            >
+                                <ArrowRight className="h-3 w-3" />
+                                <span>Back to home</span>
+                            </Link>
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );

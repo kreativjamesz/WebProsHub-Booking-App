@@ -11,6 +11,7 @@
     "seed:small": "tsx src/lib/seed-data.ts --small",
     "seed:medium": "tsx src/lib/seed-data.ts --medium",
     "seed:large": "tsx src/lib/seed-data.ts --large",
+    "seed:admin": "tsx src/lib/admin-seed-data.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

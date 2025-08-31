@@ -139,4 +139,80 @@ model Promo {
   @@map("promos")
 }
 
+// Admin Users Schema - Separate from regular users for enhanced security
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String // Hashed password
+  role      AdminRole @default(ADMIN)
+  
+  // Enhanced security fields
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String? // For TOTP
+  lastLoginAt      DateTime?
+  loginAttempts    Int      @default(0)
+  lockedUntil      DateTime?
+  
+  // Admin-specific fields
+  permissions      String // Store as JSON string for MySQL compatibility
+  department      String?
+  employeeId      String? @unique
+  isActive        Boolean @default(true)
+  
+  // Audit fields
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String? // ID of admin who created this account
+  updatedBy       String? // ID of admin who last updated this account
+  
+  // Relations
+  auditLogs       AdminAuditLog[]
+  sessions        AdminSession[]
+  
+  @@map("admin_users")
+}
+
+enum AdminRole {
+  SUPER_ADMIN    // Full system access
+  ADMIN          // Standard admin access
+  MODERATOR      // Limited admin access
+  SUPPORT        // Customer support access
+}
+
+// Admin Audit Logs
+model AdminAuditLog {
+  id          String      @id @default(cuid())
+  adminId     String      // ID of admin who performed action
+  action      String      // What action was performed
+  resource    String      // What resource was affected
+  resourceId  String?     // ID of affected resource
+  details     Json?       // Additional details about the action
+  ipAddress   String?     // IP address of admin
+  userAgent   String?     // Browser/device info
+  timestamp   DateTime    @default(now())
+  
+  // Relations
+  admin       AdminUser   @relation(fields: [adminId], references: [id])
+  
+  @@map("admin_audit_logs")
+}
+
+// Admin Sessions
+model AdminSession {
+  id          String    @id @default(cuid())
+  adminId     String
+  token       String    @unique
+  expiresAt   DateTime
+  isActive    Boolean   @default(true)
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  admin       AdminUser @relation(fields: [adminId], references: [id])
+  
+  @@map("admin_sessions")
+}
+
 

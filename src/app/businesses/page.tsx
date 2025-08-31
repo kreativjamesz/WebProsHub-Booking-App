@@ -26,7 +26,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Star, MapPin, Building, Filter, Loader2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Search, 
+  Star, 
+  MapPin, 
+  Building, 
+  Filter, 
+  Loader2, 
+  X,
+  ArrowRight,
+  Users,
+  Clock
+} from "lucide-react";
 import Image from "next/image";
 
 export default function BusinessesPage() {
@@ -93,63 +106,58 @@ export default function BusinessesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Find Local Businesses
-          </h1>
-          <p className="text-lg text-gray-600">
-            Discover and book services from amazing businesses in your area
-          </p>
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold tracking-tight">
+              Local Businesses
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Discover amazing local services and book appointments with trusted businesses in your area
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+      <div className="border-b bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col lg:flex-row gap-4 items-center">
             {/* Search Input */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <Input
-                  type="text"
-                  placeholder="Search businesses by name or service..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                />
-              </div>
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search businesses or services..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-11"
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              />
             </div>
 
             {/* Category Filter */}
-            <div className="w-full lg:w-64">
-              <Select
-                value={selectedCategory}
-                onValueChange={handleCategoryChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                                                            <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
+              <SelectTrigger className="w-full lg:w-48 h-11">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories?.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {/* Search Button */}
-            <Button
-              onClick={handleSearch}
+            <Button 
+              onClick={handleSearch} 
               disabled={isSearching}
-              className="w-full lg:w-auto"
+              className="w-full lg:w-auto h-11 px-8"
             >
               {isSearching ? (
                 <>
@@ -165,105 +173,149 @@ export default function BusinessesPage() {
             </Button>
 
             {/* Clear Filters */}
-            {(searchQuery ||
-              (selectedCategory && selectedCategory !== "all")) && (
-              <Button
-                variant="outline"
+            {(searchQuery || selectedCategory !== "all") && (
+              <Button 
+                variant="outline" 
                 onClick={clearFilters}
-                className="w-full lg:w-auto"
+                className="w-full lg:w-auto h-11"
               >
-                Clear Filters
+                <X className="mr-2 h-4 w-4" />
+                Clear
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Results */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isLoading ? (
+      {/* Results Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Results Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {businesses?.length || 0} Businesses Found
+            </h2>
+            {(searchQuery || selectedCategory !== "all") && (
+              <p className="text-sm text-muted-foreground">
+                Showing results for &quot;{searchQuery || 'all categories'}&quot;
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <Card key={i} className="animate-pulse">
-                <div className="h-48 bg-gray-200 rounded-t-lg"></div>
-                <CardHeader>
-                  <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </CardHeader>
+                <div className="aspect-video bg-muted rounded-t-lg" />
+                <CardContent className="p-6 space-y-3">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <div className="flex justify-between items-center pt-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-8 w-24" />
+                  </div>
+                </CardContent>
               </Card>
             ))}
           </div>
-        ) : businesses.length > 0 ? (
-          <>
-            <div className="mb-6">
-              <p className="text-gray-600">
-                Found {businesses.length} business
-                {businesses.length !== 1 ? "es" : ""}
-              </p>
-            </div>
+        )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {businesses.map((business) => (
-                                                <Link key={business.id} href={`/businesses/${business.id}`}>
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                    <div className="h-48 bg-gray-200 rounded-t-lg flex items-center justify-center overflow-hidden">
-                      {business.logo ? (
-                        <Image
-                          src={business.logo}
-                          alt={business.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Building className="h-16 w-16 text-gray-400" />
-                      )}
-                    </div>
-                    <CardHeader>
-                      <CardTitle className="text-lg line-clamp-1">
-                        {business.name}
-                      </CardTitle>
-                      <CardDescription className="flex items-center text-sm text-gray-600">
-                        <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                        <span className="line-clamp-1">
-                          {business.city}, {business.state}
-                        </span>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center">
-                          <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                          <span className="text-sm font-medium">
-                            {business.rating.toFixed(1)}
-                          </span>
-                          <span className="text-sm text-gray-500 ml-1">
-                            ({business.reviewCount})
-                          </span>
-                        </div>
-                        {business.isActive && (
-                          <Badge variant="secondary">Active</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {business.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </>
-        ) : (
+        {/* No Results */}
+        {!isLoading && businesses?.length === 0 && (
           <div className="text-center py-12">
-            <Building className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No businesses found
-            </h3>
-            <p className="text-gray-600 mb-6">
+            <Building className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No businesses found</h3>
+            <p className="text-muted-foreground mb-6">
               Try adjusting your search criteria or browse all categories
             </p>
             <Button onClick={clearFilters} variant="outline">
               Clear Filters
             </Button>
+          </div>
+        )}
+
+        {/* Business Grid */}
+        {!isLoading && businesses && businesses.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {businesses.map((business) => (
+              <Card key={business.id} className="group hover:shadow-lg transition-all duration-200 overflow-hidden">
+                <div className="aspect-video relative overflow-hidden">
+                  {business.coverImage ? (
+                    <Image
+                      src={business.coverImage}
+                      alt={business.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-200"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <Building className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                      {business.rating} <Star className="h-3 w-3 ml-1 fill-current" />
+                    </Badge>
+                  </div>
+                </div>
+                
+                <CardContent className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">
+                      {business.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {business.description}
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4 mr-2" />
+                      <span className="line-clamp-1">
+                        {business.city}, {business.state}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-1">
+                          <Users className="h-4 w-4" />
+                          <span>{business.reviewCount} reviews</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-4 w-4" />
+                          <span>Open</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center space-x-2">
+                      {business.isActive ? (
+                        <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Inactive</Badge>
+                      )}
+                    </div>
+                    <Button asChild variant="ghost" size="sm">
+                      <Link href={`/business/${business.id}`}>
+                        View Details
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>

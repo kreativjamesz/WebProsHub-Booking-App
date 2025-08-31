@@ -1,167 +1,14 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { AuthState, User } from "@/lib/types";
-
-// Async thunks
-export const loginUser = createAsyncThunk(
-  "auth/loginUser",
-  async (
-    { email, password }: { email: string; password: string },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response = await fetch("/api/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "login",
-          email,
-          password,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Login failed");
-      }
-
-      const data = await response.json();
-      
-      // Store token in localStorage
-      if (data.token) {
-        localStorage.setItem("authToken", data.token);
-      }
-      
-      return data.user;
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        return rejectWithValue(error.message);
-      }
-      return rejectWithValue("An unknown error occurred");
-    }
-  }
-);
-
-export const registerUser = createAsyncThunk(
-  "auth/registerUser",
-  async (
-    {
-      email,
-      password,
-      name,
-      role,
-    }: {
-      email: string;
-      password: string;
-      name: string;
-      role: "CUSTOMER" | "BUSINESS_OWNER" | "ADMIN";
-    },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response = await fetch("/api/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "register",
-          email,
-          password,
-          name,
-          role,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Registration failed");
-      }
-
-      const data = await response.json();
-      
-      // Store token in localStorage
-      if (data.token) {
-        localStorage.setItem("authToken", data.token);
-      }
-      
-      return data.user;
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        return rejectWithValue(error.message);
-      }
-      return rejectWithValue("An unknown error occurred");
-    }
-  }
-);
-
-export const logoutUser = createAsyncThunk(
-  "auth/logoutUser",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await fetch("/api/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "logout",
-        }),
-      });
-
-      // Remove token from localStorage
-      localStorage.removeItem("authToken");
-
-      if (!response.ok) {
-        throw new Error("Logout failed");
-      }
-
-      return null;
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        return rejectWithValue(error.message);
-      }
-      return rejectWithValue("An unknown error occurred");
-    }
-  }
-);
-
-export const getCurrentUser = createAsyncThunk(
-  "auth/getCurrentUser",
-  async (_, { rejectWithValue }) => {
-    try {
-      const token = localStorage.getItem("authToken");
-      
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
-      const response = await fetch("/api/auth", {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to get current user");
-      }
-
-      const data = await response.json();
-      return data.user;
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        return rejectWithValue(error.message);
-      }
-      return rejectWithValue("An unknown error occurred");
-    }
-  }
-);
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { AuthState, User, AdminUser } from "./auth.types";
+import { setCookie, removeCookie, getCookie } from "@/lib/utils/cookies";
 
 const initialState: AuthState = {
   user: null,
+  adminUser: null,
+  token: null,
+  adminToken: null,
   isAuthenticated: false,
+  isAdminAuthenticated: false,
   isLoading: false,
   error: null,
 };
@@ -170,79 +17,103 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    // Clear errors
     clearError: (state) => {
       state.error = null;
     },
-    setUser: (state, action: PayloadAction<User | null>) => {
+
+    // Regular user actions
+    setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
       state.isAuthenticated = true;
+      state.error = null;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      // Login
-      .addCase(loginUser.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload;
-        state.isAuthenticated = true;
-        state.error = null;
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      })
-      // Register
-      .addCase(registerUser.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(registerUser.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload;
-        state.isAuthenticated = true;
-        state.error = null;
-      })
-      .addCase(registerUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      })
-      // Logout
-      .addCase(logoutUser.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(logoutUser.fulfilled, (state) => {
-        state.isLoading = false;
-        state.user = null;
-        state.isAuthenticated = false;
-        state.error = null;
-      })
-      .addCase(logoutUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      })
-      // Get current user
-      .addCase(getCurrentUser.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(getCurrentUser.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload;
-        state.isAuthenticated = true;
-        state.error = null;
-      })
-      .addCase(getCurrentUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-        // Mark as not authenticated to prevent retries
-        state.isAuthenticated = false;
-        state.user = null;
-      });
+
+    setToken: (state, action: PayloadAction<string>) => {
+      state.token = action.payload;
+      setCookie("authToken", action.payload);
+    },
+
+    clearUser: (state) => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+      removeCookie("authToken");
+    },
+
+    // Admin user actions
+    setAdminUser: (state, action: PayloadAction<AdminUser>) => {
+      state.adminUser = action.payload;
+      state.isAdminAuthenticated = true;
+      state.error = null;
+    },
+
+    setAdminToken: (state, action: PayloadAction<string>) => {
+      state.adminToken = action.payload;
+      setCookie("adminToken", action.payload);
+    },
+
+    clearAdminUser: (state) => {
+      state.adminUser = null;
+      state.adminToken = null;
+      state.isAdminAuthenticated = false;
+      removeCookie("adminToken");
+    },
+
+    // Loading states
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+
+    // Error handling
+    setError: (state, action: PayloadAction<string>) => {
+      state.error = action.payload;
+      state.isLoading = false;
+    },
+
+    // Initialize from cookies
+    initializeAuth: (state) => {
+      const authToken = getCookie("authToken");
+      const adminToken = getCookie("adminToken");
+      
+      if (authToken) {
+        state.token = authToken;
+        // Note: User data will be fetched via RTK Query
+      }
+      
+      if (adminToken) {
+        state.adminToken = adminToken;
+        // Note: Admin user data will be fetched via RTK Query
+      }
+    },
+
+    // Logout both user types
+    logoutAll: (state) => {
+      state.user = null;
+      state.adminUser = null;
+      state.token = null;
+      state.adminToken = null;
+      state.isAuthenticated = false;
+      state.isAdminAuthenticated = false;
+      state.error = null;
+      removeCookie("authToken");
+      removeCookie("adminToken");
+    },
   },
 });
 
-export const { clearError, setUser } = authSlice.actions;
+export const {
+  clearError,
+  setUser,
+  setToken,
+  clearUser,
+  setAdminUser,
+  setAdminToken,
+  clearAdminUser,
+  setLoading,
+  setError,
+  initializeAuth,
+  logoutAll,
+} = authSlice.actions;
+
 export default authSlice.reducer;

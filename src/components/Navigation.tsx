@@ -1,57 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import {
-  logoutUser,
-  getCurrentUser,
-} from "@/lib/stores/features/auth/authSlice";
+import { clearUser } from "@/lib/stores/features/auth/authSlice";
+import { useLogoutMutation } from "@/lib/stores/features/auth/auth.api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/Logo";
 import {
   Search,
   Menu,
   X,
   User,
+  NotebookPen,
   Building,
   Settings,
   LogOut,
+  Home,
+  MapPin,
+  Star,
+  Shield,
+  Calendar,
+  ArrowRight
 } from "lucide-react";
 
 export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
-  const { user, isAuthenticated, isLoading } = useAppSelector(
-    (state) => state.auth
-  );
   const dispatch = useAppDispatch();
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  
+  // RTK Query hook
+  const [logout] = useLogoutMutation();
 
-  useEffect(() => {
-    // Only check auth ONCE on mount, and only if we haven't already
-    if (!hasCheckedAuth) {
-      setHasCheckedAuth(true);
-      
-      // Don't automatically check auth for guests
-      // Only check if user explicitly tries to access protected features
-      // This prevents 401 errors on public pages
-    }
-  }, [hasCheckedAuth]);
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
     try {
-      dispatch(logoutUser());
-      setIsMobileMenuOpen(false);
+      await logout().unwrap();
+      dispatch(clearUser());
     } catch (error) {
-      console.error("Logout error:", error);
-      // Fallback: just close mobile menu
-      setIsMobileMenuOpen(false);
+      console.error("Logout failed:", error);
+      // Even if logout fails, clear local state
+      dispatch(clearUser());
     }
   };
 
@@ -64,80 +61,62 @@ export function Navigation() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <Building className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">
-              BookMyService
-            </span>
-          </Link>
+          <Logo icon={NotebookPen} />
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
+            <Link
+              href="/"
+              className="flex items-center space-x-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Home className="h-4 w-4" />
+              <span>Home</span>
+            </Link>
             <Link
               href="/businesses"
-              className="text-gray-700 hover:text-blue-600 transition-colors"
+              className="flex items-center space-x-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              Find Businesses
-            </Link>
-            <Link
-              href="/promos"
-              className="text-gray-700 hover:text-blue-600 transition-colors"
-            >
-              Promotions
-            </Link>
-            <Link
-              href="/test-connection"
-              className="text-gray-700 hover:text-blue-600 transition-colors"
-            >
-              Test Connection
+              <MapPin className="h-4 w-4" />
+              <span>Businesses</span>
             </Link>
             {isAuthenticated && user?.role === "BUSINESS_OWNER" && (
               <Link
                 href="/business/dashboard"
-                className="text-gray-700 hover:text-blue-600 transition-colors"
+                className="flex items-center space-x-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                Business Dashboard
+                <Calendar className="h-4 w-4" />
+                <span>Dashboard</span>
               </Link>
             )}
             {isAuthenticated && user?.role === "ADMIN" && (
               <Link
                 href="/admin"
-                className="text-gray-700 hover:text-blue-600 transition-colors"
+                className="flex items-center space-x-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                Admin Panel
+                <Shield className="h-4 w-4" />
+                <span>Admin</span>
               </Link>
             )}
           </div>
 
-          {/* Search Bar */}
-          <div className="hidden md:flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search businesses..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-              />
-            </div>
-          </div>
+          {/* Right side - Auth & Theme */}
+          <div className="flex items-center space-x-4">
+            {/* Theme Toggle */}
+            <ThemeToggle />
 
-          {/* User Menu */}
-          <div className="hidden md:flex items-center space-x-4">
+            {/* Auth Section */}
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="relative h-8 w-8 rounded-full"
-                  >
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
                       <AvatarImage src={user?.avatar} alt={user?.name} />
-                      <AvatarFallback>
-                        {getInitials(user?.name || "")}
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {getInitials(user?.name || "U")}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -145,142 +124,154 @@ export function Navigation() {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">{user?.name}</p>
-                      <p className="w-[200px] truncate text-sm text-muted-foreground">
-                        {user?.email}
-                      </p>
+                      {user?.name && <p className="font-medium">{user.name}</p>}
+                      {user?.email && <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>}
                     </div>
                   </div>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
+                    <Link href="/user" className="flex items-center space-x-2">
+                      <User className="h-4 w-4" />
+                      <span>Profile</span>
                     </Link>
                   </DropdownMenuItem>
                   {user?.role === "BUSINESS_OWNER" && (
                     <DropdownMenuItem asChild>
-                      <Link
-                        href="/business/dashboard"
-                        className="cursor-pointer"
-                      >
-                        <Building className="mr-2 h-4 w-4" />
-                        Business Dashboard
+                      <Link href="/business/dashboard" className="flex items-center space-x-2">
+                        <Building className="h-4 w-4" />
+                        <span>Business Dashboard</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   {user?.role === "ADMIN" && (
                     <DropdownMenuItem asChild>
-                      <Link href="/admin" className="cursor-pointer">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Admin Panel
+                      <Link href="/admin" className="flex items-center space-x-2">
+                        <Shield className="h-4 w-4" />
+                        <span>Admin Panel</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
-                    className="cursor-pointer"
+                    className="flex items-center space-x-2 text-destructive focus:text-destructive"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
+                    <LogOut className="h-4 w-4" />
+                    <span>Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-4">
-                <Link href="/auth/login">
-                  <Button variant="ghost">Sign In</Button>
-                </Link>
-                <Link href="/auth/register">
-                  <Button>Sign Up</Button>
-                </Link>
+              <div className="hidden md:flex items-center space-x-3">
+                <Button variant="ghost" asChild>
+                  <Link href="/auth/login" className="flex items-center space-x-2">
+                    <User className="h-4 w-4" />
+                    <span>Sign In</span>
+                  </Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/auth/register" className="flex items-center space-x-2">
+                    <span>Sign Up</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
               </div>
             )}
-          </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
-            </Button>
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="h-9 w-9 p-0"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Mobile Navigation */}
       {isMobileMenuOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+        <div className="md:hidden border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="px-2 pt-2 pb-3 space-y-1">
             <Link
-              href="/businesses"
-              className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+              href="/"
+              className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Find Businesses
+              <Home className="h-4 w-4" />
+              <span>Home</span>
             </Link>
             <Link
-              href="/promos"
-              className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+              href="/businesses"
+              className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Promotions
+              <MapPin className="h-4 w-4" />
+              <span>Businesses</span>
             </Link>
             {isAuthenticated && user?.role === "BUSINESS_OWNER" && (
               <Link
                 href="/business/dashboard"
-                className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Business Dashboard
+                <Calendar className="h-4 w-4" />
+                <span>Business Dashboard</span>
               </Link>
             )}
             {isAuthenticated && user?.role === "ADMIN" && (
               <Link
                 href="/admin"
-                className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Admin Panel
+                <Shield className="h-4 w-4" />
+                <span>Admin Panel</span>
               </Link>
             )}
             {isAuthenticated ? (
               <>
                 <Link
-                  href="/profile"
-                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+                  href="/user"
+                  className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Profile
+                  <User className="h-4 w-4" />
+                  <span>Profile</span>
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+                  className="flex items-center space-x-3 w-full text-left px-3 py-2 text-sm font-medium text-destructive hover:text-destructive transition-colors rounded-md"
                 >
-                  Log out
+                  <LogOut className="h-4 w-4" />
+                  <span>Log out</span>
                 </button>
               </>
             ) : (
               <>
                 <Link
                   href="/auth/login"
-                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+                  className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Sign In
+                  <User className="h-4 w-4" />
+                  <span>Sign In</span>
                 </Link>
                 <Link
                   href="/auth/register"
-                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors"
+                  className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Sign Up
+                  <ArrowRight className="h-4 w-4" />
+                  <span>Sign Up</span>
                 </Link>
               </>
             )}

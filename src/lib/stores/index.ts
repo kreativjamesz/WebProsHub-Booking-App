@@ -11,6 +11,9 @@ import bookingsReducer from './features/bookings/bookingsSlice';
 import promosReducer from './features/promos/promosSlice';
 import adminReducer from './features/admin/adminSlice';
 
+// Import RTK Query API
+import { authApi } from './features/auth/auth.api';
+
 // Persist config for auth
 const authPersistConfig = {
     key: 'auth',
@@ -30,14 +33,15 @@ export const store = configureStore({
         categories: categoriesReducer,
         bookings: bookingsReducer,
         promos: promosReducer,
-        admin: adminReducer
+        admin: adminReducer,
+        [authApi.reducerPath]: authApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
             serializableCheck: {
                 ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
             },
-        }),
+        }).concat(authApi.middleware),
 });
 
 // Create persistor

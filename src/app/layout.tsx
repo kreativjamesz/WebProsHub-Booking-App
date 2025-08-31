@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
-import { Navigation } from "@/components/Navigation";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { ConditionalNavigation } from "@/components/cnditional-navigation";
+import { RouteGuard } from "@/components/RouteGuard";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
         <Providers>
           <ThemeProvider
             attribute="class"
@@ -27,10 +29,13 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <Navigation />
-            <main className="min-h-[calc(100vh-70px)] bg-gray-50">
-              {children}
-            </main>
+            <RouteGuard>
+              <ConditionalNavigation />
+              <main className="min-h-[calc(100vh-70px)] bg-background">
+                {children}
+              </main>
+              <Toaster />
+            </RouteGuard>
           </ThemeProvider>
         </Providers>
       </body>

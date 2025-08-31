@@ -92,7 +92,7 @@ const generateFakeData = (
     () => ({
       email: faker.internet.email(),
       name: faker.person.fullName(),
-      password: undefined, // Will be set by auth system
+      password: "!Password123", // Default password for seeded users
       role: faker.helpers.arrayElement(["CUSTOMER", "BUSINESS_OWNER", "ADMIN"]),
       createdAt: faker.date.past({ years: 1 }),
       updatedAt: faker.date.recent({ days: 7 }),

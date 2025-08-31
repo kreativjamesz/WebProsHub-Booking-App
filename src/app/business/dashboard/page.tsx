@@ -1,850 +1,238 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import { fetchBusinesses } from "@/lib/stores/features/businesses/businessesSlice";
-import {
-  fetchServicesByBusiness,
-  createService,
-  updateService,
-  deleteService,
-} from "@/lib/stores/features/services/servicesSlice";
-import {
-  fetchBusinessBookings,
-  updateBookingStatus,
-} from "@/lib/stores/features/bookings/bookingsSlice";
-import {
-  fetchPromosByBusiness,
-  createPromo,
-  updatePromo,
-  deletePromo,
-} from "@/lib/stores/features/promos/promosSlice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useAppSelector } from "@/lib/hooks";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Building,
-  Plus,
-  Edit,
-  Trash2,
-  Calendar,
-  DollarSign,
-  Clock,
-  Users,
-  Star,
-  Loader2,
-  AlertTriangle,
-} from "lucide-react";
-import { Service, Promo, Booking } from "@/lib/types";
+import { Building, Calendar, Users, DollarSign, Plus, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function BusinessDashboard() {
-  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { businesses } = useAppSelector((state) => state.businesses);
-  const { services, isLoading: servicesLoading } = useAppSelector(
-    (state) => state.services
-  );
-  const { bookings, isLoading: bookingsLoading } = useAppSelector(
-    (state) => state.bookings
-  );
-  const { promos, isLoading: promosLoading } = useAppSelector(
-    (state) => state.promos
-  );
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
-  const [isPromoDialogOpen, setIsPromoDialogOpen] = useState(false);
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [editingPromo, setEditingPromo] = useState<Promo | null>(null);
-  const [serviceForm, setServiceForm] = useState<{
-    name: string;
-    description: string;
-    price: string;
-    duration: string;
-    categoryId: string;
-  }>({
-    name: "",
-    description: "",
-    price: "",
-    duration: "",
-    categoryId: "",
-  });
-  const [promoForm, setPromoForm] = useState<{
-    title: string;
-    description: string;
-    discountPercentage: string;
-    startDate: string;
-    endDate: string;
-  }>({
-    title: "",
-    description: "",
-    discountPercentage: "",
-    startDate: "",
-    endDate: "",
+  // In a real app, these would come from API calls
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    todayBookings: 0,
+    totalCustomers: 0,
+    revenueToday: 0,
+    activeServices: 0
   });
 
-  const userBusiness = businesses.find((b) => b.ownerId === user?.id);
-
-  useEffect(() => {
-    if (userBusiness) {
-      dispatch(fetchServicesByBusiness(userBusiness.id));
-      dispatch(fetchBusinessBookings(userBusiness.id));
-      dispatch(fetchPromosByBusiness(userBusiness.id));
-    }
-  }, [dispatch, userBusiness]);
-
-  // Redirect if not business owner or no business
-  useEffect(() => {
-    if (user && user.role !== "BUSINESS_OWNER") {
-      window.location.href = "/";
-    }
-  }, [user]);
-
-  if (!user || user.role !== "BUSINESS_OWNER" || !userBusiness) {
-    return null;
-  }
-
-  const handleServiceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userBusiness) return;
-
-    const serviceData = {
-      name: serviceForm.name,
-      description: serviceForm.description,
-      price: parseFloat(serviceForm.price),
-      duration: parseInt(serviceForm.duration),
-      businessId: userBusiness.id,
-      categoryId: serviceForm.categoryId,
-      isActive: true,
-    };
-
-    if (editingService) {
-      await dispatch(
-        updateService({ serviceId: editingService.id, serviceData })
-      );
-    } else {
-      await dispatch(createService(serviceData));
-    }
-
-    resetServiceForm();
-    setIsServiceDialogOpen(false);
+  // Simulate loading data
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    // In production, this would be API calls
+    // const [bookingsData, statsData] = await Promise.all([
+    //   fetchBusinessBookings(),
+    //   fetchBusinessStats()
+    // ]);
+    
+    // Simulate API delay
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
   };
 
-  const handlePromoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userBusiness) return;
-
-    const promoData = {
-      title: promoForm.title,
-      description: promoForm.description,
-      discountPercentage: parseInt(promoForm.discountPercentage),
-      businessId: userBusiness.id,
-      startDate: new Date(promoForm.startDate),
-      endDate: new Date(promoForm.endDate),
-      isActive: true,
-    };
-
-    if (editingPromo) {
-      await dispatch(updatePromo({ promoId: editingPromo.id, promoData }));
-    } else {
-      await dispatch(createPromo(promoData));
-    }
-
-    resetPromoForm();
-    setIsPromoDialogOpen(false);
-  };
-
-  const resetServiceForm = () => {
-    setServiceForm({
-      name: "",
-      description: "",
-      price: "",
-      duration: "",
-      categoryId: "",
-    });
-    setEditingService(null);
-  };
-
-  const resetPromoForm = () => {
-    setPromoForm({
-      title: "",
-      description: "",
-      discountPercentage: "",
-      startDate: "",
-      endDate: "",
-    });
-    setEditingPromo(null);
-  };
-
-  const handleEditService = (service: Service) => {
-    setEditingService(service);
-    setServiceForm({
-      name: service.name,
-      description: service.description,
-      price: service.price.toString(),
-      duration: service.duration.toString(),
-      categoryId: service.categoryId,
-    });
-    setIsServiceDialogOpen(true);
-  };
-
-  const handleEditPromo = (promo: Promo) => {
-    setEditingPromo(promo);
-    setPromoForm({
-      title: promo.title,
-      description: promo.description,
-      discountPercentage: promo.discountPercentage.toString(),
-      startDate:
-        promo.startDate instanceof Date
-          ? promo.startDate.toISOString().split("T")[0]
-          : new Date(promo.startDate).toISOString().split("T")[0],
-      endDate:
-        promo.endDate instanceof Date
-          ? promo.endDate.toISOString().split("T")[0]
-          : new Date(promo.endDate).toISOString().split("T")[0],
-    });
-    setIsPromoDialogOpen(true);
-  };
-
-  const handleDeleteService = async (serviceId: string) => {
-    if (confirm("Are you sure you want to delete this service?")) {
-      await dispatch(deleteService(serviceId));
-    }
-  };
-
-  const handleDeletePromo = async (promoId: string) => {
-    if (confirm("Are you sure you want to delete this promotion?")) {
-      await dispatch(deletePromo(promoId));
-    }
-  };
-
-  const handleUpdateBookingStatus = async (
-    bookingId: string,
-    status: Booking["status"]
-  ) => {
-    await dispatch(
-      updateBookingStatus({
-        bookingId,
-        status: status,
-      })
-    );
-  };
-
-  const getStatusBadge = (status: Booking["status"]) => {
-    const variants: Record<
-      Booking["status"],
-      "default" | "secondary" | "destructive" | "outline"
-    > = {
-      PENDING: "outline",
-      CONFIRMED: "secondary",
-      COMPLETED: "default",
-      CANCELLED: "destructive",
-    };
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
-  };
-
-  const totalRevenue = bookings
-    .filter((b) => b.status === "COMPLETED")
-    .reduce(
-      (sum, b) =>
-        sum + (services.find((s) => s.id === b.serviceId)?.price || 0),
-      0
-    );
-
-  const pendingBookings = bookings.filter((b) => b.status === "PENDING").length;
-  const completedBookings = bookings.filter(
-    (b) => b.status === "COMPLETED"
-  ).length;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Business Dashboard
-          </h1>
-          <p className="text-lg text-gray-600">
-            Welcome back, {userBusiness.name}
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Building className="h-16 w-16 text-muted-foreground mx-auto" />
+          <h2 className="text-2xl font-semibold">Please log in</h2>
+          <p className="text-muted-foreground">
+            You need to be logged in to access your dashboard.
           </p>
         </div>
       </div>
+    );
+  }
 
-      {/* Stats Cards */}
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Building className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Business Dashboard</h1>
+                <p className="text-muted-foreground">Manage your business operations</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Welcome back,</p>
+                <p className="font-semibold">{user?.name}</p>
+                <Badge variant="outline" className="mt-1">
+                  {user?.role}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Services
-              </CardTitle>
-              <Building className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{services.length}</div>
-              <p className="text-xs text-muted-foreground">Active services</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Pending Bookings
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{pendingBookings}</div>
-              <p className="text-xs text-muted-foreground">
-                Awaiting confirmation
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Completed Bookings
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{completedBookings}</div>
-              <p className="text-xs text-muted-foreground">Total completed</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Revenue
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ${totalRevenue.toFixed(2)}
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Calendar className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Today's Bookings</p>
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading...</span>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold">{stats.todayBookings}</p>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                From completed bookings
-              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Users className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Customers</p>
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading...</span>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold">{stats.totalCustomers}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Revenue Today</p>
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading...</span>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold">₱{stats.revenueToday.toLocaleString()}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Building className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Services</p>
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading...</span>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold">{stats.activeServices}</p>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="bookings">Bookings</TabsTrigger>
-            <TabsTrigger value="services">Services</TabsTrigger>
-            <TabsTrigger value="promos">Promotions</TabsTrigger>
-          </TabsList>
+        {/* Main Content */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Bookings</CardTitle>
+            <CardDescription>
+              Latest customer appointments and requests
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-muted rounded-lg animate-pulse" />
+                      <div className="space-y-2">
+                        <div className="h-4 bg-muted rounded animate-pulse w-32" />
+                        <div className="h-3 bg-muted rounded animate-pulse w-48" />
+                      </div>
+                    </div>
+                    <div className="w-20 h-6 bg-muted rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : bookings.length > 0 ? (
+              <div className="space-y-4">
+                {bookings.map((booking) => (
+                  <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{booking.customerName} - {booking.serviceName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(booking.bookingDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{booking.status}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Bookings will appear here once customers start making appointments
+                </p>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Your First Service
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Bookings Tab */}
-          <TabsContent value="bookings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Bookings</CardTitle>
-                <CardDescription>
-                  Manage and update booking statuses
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {bookingsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  </div>
-                ) : bookings.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Date & Time</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bookings.map((booking) => {
-                        const service = services.find(
-                          (s) => s.id === booking.serviceId
-                        );
-                        return (
-                          <TableRow key={booking.id}>
-                            <TableCell className="font-medium">
-                              Customer #{booking.userId.slice(-6)}
-                            </TableCell>
-                            <TableCell>
-                              {service?.name || "Unknown Service"}
-                            </TableCell>
-                            <TableCell>
-                              {booking.date instanceof Date
-                                ? booking.date.toLocaleDateString()
-                                : new Date(booking.date).toLocaleDateString()}
-                              <br />
-                              <span className="text-sm text-gray-500">
-                                {booking.time}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              $
-                              {services.find((s) => s.id === booking.serviceId)
-                                ?.price || 0}
-                            </TableCell>
-                            <TableCell>
-                              {getStatusBadge(booking.status)}
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={booking.status}
-                                onValueChange={(value: Booking["status"]) =>
-                                  handleUpdateBookingStatus(booking.id, value)
-                                }
-                              >
-                                <SelectTrigger className="w-32">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="PENDING">
-                                    Pending
-                                  </SelectItem>
-                                  <SelectItem value="CONFIRMED">
-                                    Confirmed
-                                  </SelectItem>
-                                  <SelectItem value="COMPLETED">
-                                    Completed
-                                  </SelectItem>
-                                  <SelectItem value="CANCELLED">
-                                    Cancelled
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8">
-                    <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No bookings yet
-                    </h3>
-                    <p className="text-gray-600">
-                      Bookings will appear here once customers start booking
-                      your services
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Services Tab */}
-          <TabsContent value="services">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>Services</CardTitle>
-                    <CardDescription>
-                      Manage your business services
-                    </CardDescription>
-                  </div>
-                  <Button onClick={() => setIsServiceDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Service
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {servicesLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  </div>
-                ) : services.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Service Name</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {services.map((service) => (
-                        <TableRow key={service.id}>
-                          <TableCell className="font-medium">
-                            {service.name}
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {service.description}
-                          </TableCell>
-                          <TableCell>${service.price}</TableCell>
-                          <TableCell>{service.duration} min</TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditService(service)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteService(service.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8">
-                    <Building className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No services yet
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Add your first service to start accepting bookings
-                    </p>
-                    <Button onClick={() => setIsServiceDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Service
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Promos Tab */}
-          <TabsContent value="promos">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>Promotions</CardTitle>
-                    <CardDescription>
-                      Manage your business promotions and offers
-                    </CardDescription>
-                  </div>
-                  <Button onClick={() => setIsPromoDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Promotion
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {promosLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  </div>
-                ) : promos.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Discount</TableHead>
-                        <TableHead>Valid Period</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {promos.map((promo) => (
-                        <TableRow key={promo.id}>
-                          <TableCell className="font-medium">
-                            {promo.title}
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {promo.description}
-                          </TableCell>
-                          <TableCell>{promo.discountPercentage}% OFF</TableCell>
-                          <TableCell>
-                            {promo.startDate instanceof Date
-                              ? promo.startDate.toLocaleDateString()
-                              : new Date(
-                                  promo.startDate
-                                ).toLocaleDateString()}{" "}
-                            -{" "}
-                            {promo.endDate instanceof Date
-                              ? promo.endDate.toLocaleDateString()
-                              : new Date(promo.endDate).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditPromo(promo)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeletePromo(promo.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8">
-                    <Star className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No promotions yet
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Create promotions to attract more customers
-                    </p>
-                    <Button onClick={() => setIsPromoDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Promotion
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Action Buttons */}
+        <div className="mt-8 flex justify-center">
+          <Button onClick={loadDashboardData} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              'Refresh Dashboard'
+            )}
+          </Button>
+        </div>
       </div>
-
-      {/* Service Dialog */}
-      <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingService ? "Edit Service" : "Add New Service"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingService
-                ? "Update your service details"
-                : "Create a new service for your business"}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleServiceSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="serviceName">Service Name</Label>
-              <Input
-                id="serviceName"
-                value={serviceForm.name}
-                onChange={(e) =>
-                  setServiceForm({ ...serviceForm, name: e.target.value })
-                }
-                placeholder="Enter service name"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="serviceDescription">Description</Label>
-              <Textarea
-                id="serviceDescription"
-                value={serviceForm.description}
-                onChange={(e) =>
-                  setServiceForm({
-                    ...serviceForm,
-                    description: e.target.value,
-                  })
-                }
-                placeholder="Describe your service"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="servicePrice">Price ($)</Label>
-                <Input
-                  id="servicePrice"
-                  type="number"
-                  step="0.01"
-                  value={serviceForm.price}
-                  onChange={(e) =>
-                    setServiceForm({ ...serviceForm, price: e.target.value })
-                  }
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="serviceDuration">Duration (minutes)</Label>
-                <Input
-                  id="serviceDuration"
-                  type="number"
-                  value={serviceForm.duration}
-                  onChange={(e) =>
-                    setServiceForm({ ...serviceForm, duration: e.target.value })
-                  }
-                  placeholder="60"
-                  required
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsServiceDialogOpen(false);
-                  resetServiceForm();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingService ? "Update Service" : "Add Service"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Promo Dialog */}
-      <Dialog open={isPromoDialogOpen} onOpenChange={setIsPromoDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingPromo ? "Edit Promotion" : "Add New Promotion"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingPromo
-                ? "Update your promotion details"
-                : "Create a new promotion to attract customers"}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handlePromoSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="promoTitle">Promotion Title</Label>
-              <Input
-                id="promoTitle"
-                value={promoForm.title}
-                onChange={(e) =>
-                  setPromoForm({ ...promoForm, title: e.target.value })
-                }
-                placeholder="Enter promotion title"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="promoDescription">Description</Label>
-              <Textarea
-                id="promoDescription"
-                value={promoForm.description}
-                onChange={(e) =>
-                  setPromoForm({ ...promoForm, description: e.target.value })
-                }
-                placeholder="Describe your promotion"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="promoDiscount">Discount (%)</Label>
-                <Input
-                  id="promoDiscount"
-                  type="number"
-                  value={promoForm.discountPercentage}
-                  onChange={(e) =>
-                    setPromoForm({
-                      ...promoForm,
-                      discountPercentage: e.target.value,
-                    })
-                  }
-                  placeholder="20"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="promoStartDate">Start Date</Label>
-                <Input
-                  id="promoStartDate"
-                  type="date"
-                  value={promoForm.startDate}
-                  onChange={(e) =>
-                    setPromoForm({ ...promoForm, startDate: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="promoEndDate">End Date</Label>
-                <Input
-                  id="promoEndDate"
-                  type="date"
-                  value={promoForm.endDate}
-                  onChange={(e) =>
-                    setPromoForm({ ...promoForm, endDate: e.target.value })
-                  }
-                  required
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsPromoDialogOpen(false);
-                  resetPromoForm();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingPromo ? "Update Promotion" : "Add Promotion"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

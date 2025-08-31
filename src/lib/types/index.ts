@@ -19,6 +19,9 @@ export type { Promo, PromosState } from './promo';
 // Review Types
 export type { Review } from './review';
 
+// Favorite Types
+export type { Favorite, FavoritesState } from './favorite';
+
 // Root State
 export interface RootState {
   auth: import('./user').AuthState;
@@ -27,4 +30,5 @@ export interface RootState {
   categories: import('./category').CategoriesState;
   bookings: import('./booking').BookingsState;
   promos: import('./promo').PromosState;
+  favorites: import('./favorite').FavoritesState;
 }
