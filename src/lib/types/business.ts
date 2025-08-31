@@ -1,7 +1,7 @@
 export interface Business {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   logo?: string;
   coverImage?: string;
   address: string;

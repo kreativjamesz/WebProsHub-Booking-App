@@ -2,13 +2,15 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "CUSTOMER" | "BUSINESS_OWNER" | "ADMIN";
+  role: "CUSTOMER" | "BUSINESS_OWNER";
   avatar?: string;
   phone?: string;
   address?: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type UserRole = "CUSTOMER" | "BUSINESS_OWNER";
 
 export interface AuthState {
   user: User | null;

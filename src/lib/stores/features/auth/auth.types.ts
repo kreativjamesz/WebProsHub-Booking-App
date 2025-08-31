@@ -6,14 +6,16 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  avatar?: string;
+  phone?: string;
+  address?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export enum UserRole {
-  ADMIN = "ADMIN",
   BUSINESS_OWNER = "BUSINESS_OWNER",
-  CUSTOMER = "CUSTOMER"
+  CUSTOMER = "CUSTOMER",
 }
 
 // Admin User Types
@@ -34,19 +36,15 @@ export interface AdminUser {
 
 export enum AdminRole {
   SUPER_ADMIN = "SUPER_ADMIN",
-  ADMIN = "ADMIN",
   MODERATOR = "MODERATOR",
-  SUPPORT = "SUPPORT"
+  SUPPORT = "SUPPORT",
 }
 
 // Auth State Types
 export interface AuthState {
   user: User | null;
-  adminUser: AdminUser | null;
   token: string | null;
-  adminToken: string | null;
   isAuthenticated: boolean;
-  isAdminAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
 }

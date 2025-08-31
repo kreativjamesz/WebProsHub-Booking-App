@@ -93,7 +93,7 @@ const generateFakeData = (
       email: faker.internet.email(),
       name: faker.person.fullName(),
       password: "!Password123", // Default password for seeded users
-      role: faker.helpers.arrayElement(["CUSTOMER", "BUSINESS_OWNER", "ADMIN"]),
+      role: faker.helpers.arrayElement(["CUSTOMER", "BUSINESS_OWNER"]),
       createdAt: faker.date.past({ years: 1 }),
       updatedAt: faker.date.recent({ days: 7 }),
     })
@@ -105,8 +105,14 @@ const generateFakeData = (
     () => ({
       name: faker.company.name(),
       description: faker.lorem.paragraph(),
-      logo: `https://picsum.photos/200/200?random=${faker.number.int({ min: 1, max: 1000 })}`,
-      coverImage: `https://picsum.photos/800/400?random=${faker.number.int({ min: 1, max: 1000 })}`,
+      logo: `https://picsum.photos/200/200?random=${faker.number.int({
+        min: 1,
+        max: 1000,
+      })}`,
+      coverImage: `https://picsum.photos/800/400?random=${faker.number.int({
+        min: 1,
+        max: 1000,
+      })}`,
       address: faker.location.streetAddress(),
       city: faker.location.city(),
       state: faker.location.state({ abbreviated: true }),
@@ -134,7 +140,10 @@ const generateFakeData = (
       duration: faker.helpers.arrayElement([30, 45, 60, 90, 120, 180]), // in minutes
       businessId: "", // Will be set after businesses are created
       categoryId: "", // Will be set after categories are created
-      image: `https://picsum.photos/400/300?random=${faker.number.int({ min: 1, max: 1000 })}`,
+      image: `https://picsum.photos/400/300?random=${faker.number.int({
+        min: 1,
+        max: 1000,
+      })}`,
       isActive: faker.datatype.boolean(0.9), // 90% chance of being active
       createdAt: faker.date.past({ years: 1 }),
       updatedAt: faker.date.recent({ refDate: new Date().toString() }),
@@ -197,7 +206,7 @@ export async function seedDatabase(counts?: {
       const created = await prisma.user.create({
         data: user,
       });
-      createdUsers.push(created);
+      createdUsers.push(created as User);
       console.log(`✅ Created user: ${created.name} (${created.role})`);
     }
 
@@ -218,9 +227,7 @@ export async function seedDatabase(counts?: {
     for (const business of businesses) {
       const randomCategory = faker.helpers.arrayElement(createdCategories);
       const businessOwner = faker.helpers.arrayElement(
-        createdUsers.filter(
-          (u) => u.role === "BUSINESS_OWNER" || u.role === "ADMIN"
-        )
+        createdUsers.filter((u) => u.role === "BUSINESS_OWNER")
       );
 
       const created = await prisma.business.create({
@@ -230,7 +237,7 @@ export async function seedDatabase(counts?: {
           ownerId: businessOwner.id,
         },
       });
-      createdBusinesses.push(created);
+      createdBusinesses.push(created as Business);
       console.log(
         `✅ Created business: ${business.name} (${randomCategory.name})`
       );
@@ -291,8 +298,8 @@ export async function createAdminUser(): Promise<{
     console.log("👑 Creating admin user...");
 
     // Check if admin user already exists
-    const adminExists = await prisma.user.findFirst({
-      where: { role: "ADMIN" },
+    const adminExists = await prisma.adminUser.findFirst({
+      where: { role: "SUPER_ADMIN" },
     });
 
     if (adminExists) {
@@ -300,12 +307,17 @@ export async function createAdminUser(): Promise<{
       return { success: true, message: "Admin user already exists" };
     }
 
-    // Create admin user
-    const adminUser = await prisma.user.create({
+    // Create admin user in AdminUser model
+    const adminUser = await prisma.adminUser.create({
       data: {
         email: "admin@bookmyservice.com",
         name: "James Billy Vasig SuperAdmin",
-        role: "ADMIN",
+        password: "!AdminPassword123", // Default password - should be changed
+        role: "SUPER_ADMIN",
+        permissions: JSON.stringify(["*"]), // All permissions
+        department: "System Administration",
+        employeeId: "ADMIN001",
+        isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -315,8 +327,7 @@ export async function createAdminUser(): Promise<{
     return {
       success: true,
       message: "Admin user created successfully",
-      // Note: Password will need to be set separately through the auth system
-      // You may want to set a default password here or handle it differently
+      // Note: Password should be changed after first login
     };
   } catch (error) {
     console.error("❌ Failed to create admin user:", error);
@@ -409,13 +420,13 @@ async function main() {
 
   try {
     switch (command) {
-      case '--small':
+      case "--small":
         await seedSmallDataset();
         break;
-      case '--medium':
+      case "--medium":
         await seedMediumDataset();
         break;
-      case '--large':
+      case "--large":
         await seedLargeDataset();
         break;
       default:
@@ -423,11 +434,11 @@ async function main() {
         await seedMediumDataset();
         break;
     }
-    
-    console.log('✅ Seeding completed successfully!');
+
+    console.log("✅ Seeding completed successfully!");
     process.exit(0);
   } catch (error) {
-    console.error('❌ Seeding failed:', error);
+    console.error("❌ Seeding failed:", error);
     process.exit(1);
   }
 }

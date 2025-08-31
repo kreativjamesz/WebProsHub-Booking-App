@@ -15,6 +15,7 @@ export const PROTECTED_ROUTES: RouteConfig[] = [
   { path: '/admin/businesses', requiresAuth: true, requiredRole: 'ADMIN', redirectTo: '/admin-login' },
   { path: '/admin/bookings', requiresAuth: true, requiredRole: 'ADMIN', redirectTo: '/admin-login' },
   { path: '/admin/settings', requiresAuth: true, requiredRole: 'ADMIN', redirectTo: '/admin-login' },
+  { path: '/admin/admins', requiresAuth: true, requiredRole: 'SUPER_ADMIN', redirectTo: '/admin-login' },
   
   // Business dashboard routes
   { path: '/business/dashboard', requiresAuth: true, requiredRole: 'BUSINESS_OWNER', redirectTo: '/auth/login' },

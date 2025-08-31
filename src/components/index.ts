@@ -7,5 +7,9 @@ export { AdminAuthGuard } from './AdminAuthGuard';
 export { AdminLoginGuard } from './AdminLoginGuard';
 export { RouteGuard } from './RouteGuard';
 
+// Export admin components
+export { StatCard } from './admin/StatCard';
+export { ChartCard } from './admin/ChartCard';
+
 // Export cookie utilities
 export * from '../lib/utils/cookies';

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAppSelector, useAppDispatch } from "@/lib/hooks";
+import { useAppSelector, useAppDispatch, useUserRoles } from "@/lib/hooks";
 import { clearUser } from "@/lib/stores/features/auth/authSlice";
 import { useLogoutMutation } from "@/lib/stores/features/auth/auth.api";
 import { Button } from "@/components/ui/button";
@@ -30,14 +30,15 @@ import {
   Star,
   Shield,
   Calendar,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
 
 export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
-  
+  const { isBusinessOwner, isAdmin } = useUserRoles();
+
   // RTK Query hook
   const [logout] = useLogoutMutation();
 
@@ -83,7 +84,7 @@ export function Navigation() {
               <MapPin className="h-4 w-4" />
               <span>Businesses</span>
             </Link>
-            {isAuthenticated && user?.role === "BUSINESS_OWNER" && (
+            {isBusinessOwner() && (
               <Link
                 href="/business/dashboard"
                 className="flex items-center space-x-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -92,13 +93,14 @@ export function Navigation() {
                 <span>Dashboard</span>
               </Link>
             )}
-            {isAuthenticated && user?.role === "ADMIN" && (
+
+            {isAdmin() && (
               <Link
                 href="/admin"
                 className="flex items-center space-x-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Shield className="h-4 w-4" />
-                <span>Admin</span>
+                <span>Admin Dashboard</span>
               </Link>
             )}
           </div>
@@ -112,7 +114,10 @@ export function Navigation() {
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Button
+                    variant="ghost"
+                    className="relative h-9 w-9 rounded-full"
+                  >
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={user?.avatar} alt={user?.name} />
                       <AvatarFallback className="bg-primary/10 text-primary">
@@ -125,7 +130,11 @@ export function Navigation() {
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1 leading-none">
                       {user?.name && <p className="font-medium">{user.name}</p>}
-                      {user?.email && <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>}
+                      {user?.email && (
+                        <p className="w-[200px] truncate text-sm text-muted-foreground">
+                          {user.email}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <DropdownMenuSeparator />
@@ -135,22 +144,18 @@ export function Navigation() {
                       <span>Profile</span>
                     </Link>
                   </DropdownMenuItem>
-                  {user?.role === "BUSINESS_OWNER" && (
+                  {isBusinessOwner() && (
                     <DropdownMenuItem asChild>
-                      <Link href="/business/dashboard" className="flex items-center space-x-2">
+                      <Link
+                        href="/business/dashboard"
+                        className="flex items-center space-x-2"
+                      >
                         <Building className="h-4 w-4" />
                         <span>Business Dashboard</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {user?.role === "ADMIN" && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin" className="flex items-center space-x-2">
-                        <Shield className="h-4 w-4" />
-                        <span>Admin Panel</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
@@ -164,13 +169,19 @@ export function Navigation() {
             ) : (
               <div className="hidden md:flex items-center space-x-3">
                 <Button variant="ghost" asChild>
-                  <Link href="/auth/login" className="flex items-center space-x-2">
+                  <Link
+                    href="/auth/login"
+                    className="flex items-center space-x-2"
+                  >
                     <User className="h-4 w-4" />
                     <span>Sign In</span>
                   </Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/auth/register" className="flex items-center space-x-2">
+                  <Link
+                    href="/auth/register"
+                    className="flex items-center space-x-2"
+                  >
                     <span>Sign Up</span>
                     <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -217,7 +228,7 @@ export function Navigation() {
               <MapPin className="h-4 w-4" />
               <span>Businesses</span>
             </Link>
-            {isAuthenticated && user?.role === "BUSINESS_OWNER" && (
+            {isBusinessOwner() && (
               <Link
                 href="/business/dashboard"
                 className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
@@ -227,16 +238,18 @@ export function Navigation() {
                 <span>Business Dashboard</span>
               </Link>
             )}
-            {isAuthenticated && user?.role === "ADMIN" && (
+
+            {isAdmin() && (
               <Link
                 href="/admin"
                 className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <Shield className="h-4 w-4" />
-                <span>Admin Panel</span>
+                <span>Admin Dashboard</span>
               </Link>
             )}
+
             {isAuthenticated ? (
               <>
                 <Link

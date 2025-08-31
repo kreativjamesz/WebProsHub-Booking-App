@@ -21,8 +21,8 @@ interface RouteGuardProps {
 export function RouteGuard({ children }: RouteGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, adminUser, isAuthenticated, isAdminAuthenticated } =
-    useAppSelector((state) => state.auth);
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { adminUser, isAdminAuthenticated } = useAppSelector((state) => state.adminAuth);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fallback timeout to prevent infinite loading

@@ -52,6 +52,7 @@ model Business {
   
   // Relations
   owner   User     @relation(fields: [ownerId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
   services Service[]
   bookings Booking[]
   
@@ -99,7 +100,6 @@ model Booking {
 }
 
 enum UserRole {
-  ADMIN
   BUSINESS_OWNER
   CUSTOMER
 }
@@ -120,6 +120,9 @@ model Category {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  // Relations
+  businesses Business[]
   
   @@map("categories")
 }
@@ -145,7 +148,7 @@ model AdminUser {
   email     String   @unique
   name      String
   password  String // Hashed password
-  role      AdminRole @default(ADMIN)
+  role      AdminRole @default(SUPER_ADMIN)
   
   // Enhanced security fields
   twoFactorEnabled Boolean @default(false)
@@ -175,7 +178,6 @@ model AdminUser {
 
 enum AdminRole {
   SUPER_ADMIN    // Full system access
-  ADMIN          // Standard admin access
   MODERATOR      // Limited admin access
   SUPPORT        // Customer support access
 }

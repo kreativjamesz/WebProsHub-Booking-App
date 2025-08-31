@@ -26,14 +26,14 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Building } from "lucide-react";
-import { useAdminLoginMutation } from "@/lib/stores/features/auth/auth.api";
+import { useAdminLoginMutation } from "@/lib/stores/features/admin/admin.api";
 import { useDispatch } from "react-redux";
 import {
   setAdminUser,
   setAdminToken,
-  clearError,
-  setError,
-} from "@/lib/stores/features/auth/authSlice";
+  clearAdminError,
+  setAdminError,
+} from "@/lib/stores/features/admin/adminAuthSlice";
 import { setCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
 
@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(clearError());
+    dispatch(clearAdminError());
 
     try {
       const result = await adminLogin({ email, password }).unwrap();
@@ -91,10 +91,10 @@ export default function AdminLoginPage() {
           (error as unknown as { data: { error: string } })?.data?.error ||
           error?.message ||
           "Login failed";
-        dispatch(setError(errorMessage));
+        dispatch(setAdminError(errorMessage));
         console.error("Admin login error:", errorMessage);
       } else {
-        dispatch(setError("Login failed"));
+        dispatch(setAdminError("Login failed"));
       }
     }
   };
