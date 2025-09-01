@@ -35,7 +35,6 @@ import {
   Users,
   Shield,
   UserPlus,
-  Search,
   Edit,
   LogOut,
   AlertTriangle,
@@ -48,6 +47,8 @@ import {
 import { getCookie } from "@/lib/utils/cookies";
 import { toast } from "sonner";
 import { type AdminUser } from "@/stores/slices/private/admin.types";
+import { SearchInput } from "@/components/admin/SearchInput";
+import { Pagination } from "@/components/admin/Pagination";
 
 export default function AdminsPage() {
   const router = useRouter();
@@ -379,15 +380,12 @@ export default function AdminsPage() {
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search admins..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchInput
+              placeholder="Search admins..."
+              value={searchTerm}
+              onChange={setSearchTerm}
+              delay={500}
+            />
           </div>
           <div className="flex gap-2">
             <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -531,6 +529,17 @@ export default function AdminsPage() {
                   )}
                 </tbody>
               </table>
+              
+              {/* Pagination */}
+              <div className="mt-6">
+                <Pagination
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalAdmins}
+                  itemsPerPage={pagination.adminsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

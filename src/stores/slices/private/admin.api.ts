@@ -24,7 +24,7 @@ const baseQuery = fetchBaseQuery({
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery,
-  tagTypes: ['Users', 'Businesses', 'Categories', 'System', 'Admins'],
+  tagTypes: ['Users', 'Businesses', 'Categories', 'System', 'Admins', 'Bookings'],
   endpoints: (builder) => ({
     // Users Management
     getUsers: builder.query({
@@ -33,8 +33,6 @@ export const adminApi = createApi({
       }),
       providesTags: ['Users'],
     }),
-
-
 
     // New RTK Query endpoint for fetching users (to compare with manual fetch)
     fetchingUsers: builder.query({
@@ -242,6 +240,36 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ['Admins'],
     }),
+
+    // Bookings Management
+    getBookings: builder.query({
+      query: ({ page = 1, search = '', status = 'all', date = 'all' }) => ({
+        url: `/bookings?page=${page}&search=${search}&status=${status}&date=${date}`,
+      }),
+      providesTags: ['Bookings'],
+    }),
+
+    getBookingById: builder.query({
+      query: (bookingId: string) => `/bookings/${bookingId}`,
+      providesTags: (result, error, bookingId) => [{ type: 'Bookings', id: bookingId }],
+    }),
+
+    updateBookingStatus: builder.mutation({
+      query: ({ bookingId, status }) => ({
+        url: `/bookings/${bookingId}`,
+        method: 'PATCH',
+        body: { status },
+      }),
+      invalidatesTags: ['Bookings'],
+    }),
+
+    deleteBooking: builder.mutation({
+      query: (bookingId: string) => ({
+        url: `/bookings/${bookingId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Bookings'],
+    }),
   }),
 });
 
@@ -284,4 +312,10 @@ export const {
   useCreateAdminMutation,
   useUpdateAdminMutation,
   useDeleteAdminMutation,
+  
+  // Bookings Management
+  useGetBookingsQuery,
+  useGetBookingByIdQuery,
+  useUpdateBookingStatusMutation,
+  useDeleteBookingMutation,
 } = adminApi;

@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { Search, Users, UserCheck, Building2, LogOut } from "lucide-react";
+import { Users, UserCheck, Building2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types/user";
 import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
@@ -36,6 +36,8 @@ import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
 import { useRouter } from "next/navigation";
 import { getCookie } from "@/lib/utils/cookies";
+import { SearchInput } from "@/components/admin/SearchInput";
+import { Pagination } from "@/components/admin/Pagination";
 
 export default function AdminUsersPage() {
   const dispatch = useAppDispatch();
@@ -134,9 +136,12 @@ export default function AdminUsersPage() {
   const businessOwners = users.filter(
     (user: User) => user.role === "BUSINESS_OWNER"
   ).length;
-  // Note: Regular users don't have isActive field, only AdminUsers do
-  const activeUsers = users.length; // All users are considered active
-  const inactiveUsers = 0; // No inactive users in current schema
+  const activeUsers = users.filter(
+    (user: User) => user.status === "ACTIVE"
+  ).length;
+  const inactiveUsers = users.filter(
+    (user: User) => user.status === "INACTIVE"
+  ).length;
 
   if (usersError) {
     return (
@@ -228,15 +233,12 @@ export default function AdminUsersPage() {
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+              <SearchInput
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={setSearchTerm}
+                delay={500}
+              />
             </div>
 
             <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -256,8 +258,8 @@ export default function AdminUsersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
               </SelectContent>
             </Select>
 
@@ -343,6 +345,17 @@ export default function AdminUsersPage() {
                   ))}
                 </TableBody>
               </Table>
+
+              {/* Pagination */}
+              <div className="mt-6">
+                <Pagination
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalUsers}
+                  itemsPerPage={pagination.usersPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
             </>
           )}
         </CardContent>

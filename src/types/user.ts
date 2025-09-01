@@ -3,6 +3,7 @@ export interface User {
   email: string;
   name: string;
   role: "CUSTOMER" | "BUSINESS_OWNER";
+  status?: "ACTIVE" | "INACTIVE"; // Made optional temporarily
   avatar?: string;
   phone?: string;
   address?: string;

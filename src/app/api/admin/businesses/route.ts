@@ -1,43 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
-import jwt from "jsonwebtoken";
-import { config } from "@/lib/config";
-
-const ADMIN_JWT_SECRET = config.adminJwt.secret;
+import { verifyAdminToken } from "@/lib/utils/route-guards";
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin token
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    // Verify admin authentication
+    const admin = await verifyAdminToken(request);
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7);
-    
-    let decoded: { adminId: string; role: string };
-    try {
-      decoded = jwt.verify(token, ADMIN_JWT_SECRET) as { adminId: string; role: string };
-    } catch {
+    // Check if admin has permission to view businesses
+    if (admin.role !== "SUPER_ADMIN" && admin.role !== "MODERATOR") {
       return NextResponse.json(
-        { success: false, error: "Invalid token" },
-        { status: 401 }
-      );
-    }
-
-    // Verify that the admin user exists and is active
-    const adminUser = await prisma.adminUser.findUnique({
-      where: { id: decoded.adminId },
-      select: { id: true, role: true, isActive: true }
-    });
-
-    if (!adminUser || !adminUser.isActive) {
-      return NextResponse.json(
-        { success: false, error: "Admin authentication failed" },
-        { status: 401 }
+        { error: "Insufficient permissions" },
+        { status: 403 }
       );
     }
 
@@ -117,7 +97,6 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(totalBusinesses / limit);
 
     return NextResponse.json({
-      success: true,
       businesses,
       pagination: {
         currentPage: page,
@@ -133,13 +112,13 @@ export async function GET(request: NextRequest) {
     // Check if it's an authentication-related error
     if (error instanceof Error && error.message.includes('Admin authentication failed')) {
       return NextResponse.json(
-        { success: false, error: "Admin authentication failed" },
+        { error: "Admin authentication failed" },
         { status: 401 }
       );
     }
     
     return NextResponse.json(
-      { success: false, error: "Failed to fetch businesses" },
+      { error: "Failed to fetch businesses" },
       { status: 500 }
     );
   }

@@ -1,4 +1,10 @@
 // Route protection utilities for secure navigation
+import { NextRequest } from "next/server";
+import jwt from "jsonwebtoken";
+import { config } from "@/lib/config";
+import { prisma } from "@/lib/database";
+
+const ADMIN_JWT_SECRET = config.adminJwt.secret;
 
 export interface RouteConfig {
   path: string;
@@ -108,4 +114,43 @@ export function getRedirectUrl(pathname: string, isAuthenticated: boolean, userR
   }
   
   return pathname; // Allow access
+}
+
+// Verify admin token from request headers
+export async function verifyAdminToken(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return null;
+    }
+
+    const token = authHeader.substring(7);
+    
+    // Verify JWT token
+    const decoded = jwt.verify(token, ADMIN_JWT_SECRET) as {
+      adminId: string;
+      role: string;
+    };
+
+    // Verify that the admin user exists and is active
+    const adminUser = await prisma.adminUser.findUnique({
+      where: { id: decoded.adminId },
+      select: { 
+        id: true, 
+        name: true,
+        email: true,
+        role: true, 
+        isActive: true 
+      }
+    });
+
+    if (!adminUser || !adminUser.isActive) {
+      return null;
+    }
+
+    return adminUser;
+  } catch (error) {
+    console.error("Admin token verification failed:", error);
+    return null;
+  }
 }

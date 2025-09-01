@@ -50,7 +50,6 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle,
-  Search,
   Filter,
   LogOut,
   Phone,
@@ -59,6 +58,8 @@ import {
 } from "lucide-react";
 import { Business } from "@/types";
 import { toast } from "sonner";
+import { SearchInput } from "@/components/admin/SearchInput";
+import { Pagination } from "@/components/admin/Pagination";
 
 export default function AdminBusinessesPage() {
   const dispatch = useAppDispatch();
@@ -66,7 +67,9 @@ export default function AdminBusinessesPage() {
   const { adminUser } = useAppSelector((state) => state.adminAuth);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
+    null
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -85,12 +88,12 @@ export default function AdminBusinessesPage() {
     isLoading: isLoadingBusinesses,
     error: businessesError,
     refetch: refetchBusinesses,
-  } = useGetBusinessesQuery({ 
-    page: currentPage, 
-    search: searchTerm, 
-    status: statusFilter, 
-    category: categoryFilter, 
-    city: cityFilter 
+  } = useGetBusinessesQuery({
+    page: currentPage,
+    search: searchTerm,
+    status: statusFilter,
+    category: categoryFilter,
+    city: cityFilter,
   });
 
   // Extract data from API response
@@ -99,7 +102,7 @@ export default function AdminBusinessesPage() {
     currentPage: 1,
     totalPages: 1,
     totalBusinesses: 0,
-    businessesPerPage: 20
+    businessesPerPage: 20,
   };
 
   const handleDeleteBusiness = async (businessId: string) => {
@@ -109,7 +112,9 @@ export default function AdminBusinessesPage() {
         toast.success("Business deleted successfully");
         refetchBusinesses();
       } catch (error: unknown) {
-        const errorMessage = (error as { data?: { error?: string } })?.data?.error || "Failed to delete business";
+        const errorMessage =
+          (error as { data?: { error?: string } })?.data?.error ||
+          "Failed to delete business";
         toast.error(errorMessage);
         console.error("Delete error:", error);
       }
@@ -120,16 +125,18 @@ export default function AdminBusinessesPage() {
     if (selectedBusiness && ownerEmail) {
       setIsAssigningOwner(true);
       try {
-        await assignBusinessOwner({ 
-          businessId: selectedBusiness.id, 
-          ownerEmail 
+        await assignBusinessOwner({
+          businessId: selectedBusiness.id,
+          ownerEmail,
         }).unwrap();
         setOwnerEmail("");
         setSelectedBusiness(null);
         toast.success("Business owner assigned successfully");
         refetchBusinesses();
       } catch (error: unknown) {
-        const errorMessage = (error as { data?: { error?: string } })?.data?.error || "Failed to assign business owner";
+        const errorMessage =
+          (error as { data?: { error?: string } })?.data?.error ||
+          "Failed to assign business owner";
         toast.error(errorMessage);
         console.error("Assign owner error:", error);
       } finally {
@@ -144,7 +151,9 @@ export default function AdminBusinessesPage() {
       toast.success("Business status updated successfully");
       refetchBusinesses();
     } catch (error: unknown) {
-      const errorMessage = (error as { data?: { error?: string } })?.data?.error || "Failed to update business status";
+      const errorMessage =
+        (error as { data?: { error?: string } })?.data?.error ||
+        "Failed to update business status";
       toast.error(errorMessage);
       console.error("Status update error:", error);
     }
@@ -315,14 +324,12 @@ export default function AdminBusinessesPage() {
                 <Label htmlFor="search" className="text-sm font-medium">
                   Search Businesses
                 </Label>
-                <div className="relative mt-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="search"
+                <div className="mt-1">
+                  <SearchInput
                     placeholder="Search by name, description, or city..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    onChange={setSearchTerm}
+                    delay={500}
                   />
                 </div>
               </div>
@@ -444,6 +451,17 @@ export default function AdminBusinessesPage() {
                     ))}
                   </TableBody>
                 </Table>
+
+                {/* Pagination */}
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={pagination.currentPage}
+                    totalPages={pagination.totalPages}
+                    totalItems={pagination.totalBusinesses}
+                    itemsPerPage={pagination.businessesPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
               </div>
             )}
           </CardContent>

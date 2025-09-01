@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,40 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum UserRole {
-  BUSINESS_OWNER
-  CUSTOMER
-}
-
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String?
-  role      UserRole @default(CUSTOMER)
-  status    UserStatus @default(INACTIVE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  bookings    Booking[]
-  businesses  Business[] // If user is business owner
-  
+  id         String     @id @default(cuid())
+  email      String     @unique
+  name       String
+  password   String?
+  role       UserRole   @default(CUSTOMER)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  status     UserStatus @default(INACTIVE)
+  bookings   Booking[]
+  businesses Business[]
+
   @@map("users")
 }
 
-enum BusinessStatus {
-  HIDDEN
-  PUBLISHED
-}
-
 model Business {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   name        String
   description String?
   logo        String?
@@ -60,47 +37,174 @@ model Business {
   website     String?
   categoryId  String
   ownerId     String
-  isActive    Boolean  @default(true)
-  isFeatured  Boolean  @default(false)
+  isActive    Boolean        @default(true)
+  rating      Float          @default(0)
+  reviewCount Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  isFeatured  Boolean        @default(false)
   status      BusinessStatus @default(HIDDEN)
-  rating      Float    @default(0)
-  reviewCount Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  owner   User     @relation(fields: [ownerId], references: [id])
-  category Category @relation(fields: [categoryId], references: [id])
-  services Service[]
-  bookings Booking[]
-  
+  bookings    Booking[]
+  category    Category       @relation(fields: [categoryId], references: [id])
+  owner       User           @relation(fields: [ownerId], references: [id])
+  services    Service[]
+
+  @@index([categoryId], map: "businesses_categoryId_fkey")
+  @@index([ownerId], map: "businesses_ownerId_fkey")
   @@map("businesses")
+}
+
+model Service {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal
+  duration    Int
+  businessId  String
+  categoryId  String
+  image       String?
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  status      ServiceStatus @default(HIDDEN)
+  bookings    Booking[]
+  business    Business      @relation(fields: [businessId], references: [id])
+
+  @@index([businessId], map: "services_businessId_fkey")
+  @@map("services")
+}
+
+model Booking {
+  id         String        @id @default(cuid())
+  date       DateTime
+  time       String
+  status     BookingStatus @default(PENDING)
+  notes      String?
+  userId     String
+  businessId String
+  serviceId  String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  business   Business      @relation(fields: [businessId], references: [id])
+  service    Service       @relation(fields: [serviceId], references: [id])
+  user       User          @relation(fields: [userId], references: [id])
+
+  @@index([businessId], map: "bookings_businessId_fkey")
+  @@index([serviceId], map: "bookings_serviceId_fkey")
+  @@index([userId], map: "bookings_userId_fkey")
+  @@map("bookings")
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  color       String
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  businesses  Business[]
+
+  @@map("categories")
+}
+
+model Promo {
+  id                 String    @id @default(cuid())
+  title              String
+  description        String
+  discountPercentage Int
+  businessId         String
+  startDate          DateTime
+  endDate            DateTime
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  isFeatured         Boolean   @default(false)
+  isPromoted         Boolean   @default(false)
+  promoDescription   String?
+  promoEndDate       DateTime?
+  promoImage         String?
+  promoPrice         Decimal?
+  promoStartDate     DateTime?
+
+  @@map("promos")
+}
+
+model AdminUser {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  name             String
+  password         String
+  role             AdminRole       @default(SUPER_ADMIN)
+  twoFactorEnabled Boolean         @default(false)
+  twoFactorSecret  String?
+  lastLoginAt      DateTime?
+  loginAttempts    Int             @default(0)
+  lockedUntil      DateTime?
+  permissions      String
+  department       String?
+  employeeId       String?         @unique
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  createdBy        String?
+  updatedBy        String?
+  auditLogs        AdminAuditLog[]
+  sessions         AdminSession[]
+
+  @@map("admin_users")
+}
+
+model AdminAuditLog {
+  id         String    @id @default(cuid())
+  adminId    String
+  action     String
+  resource   String
+  resourceId String?
+  details    String?   @db.LongText
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime  @default(now())
+  admin      AdminUser @relation(fields: [adminId], references: [id])
+
+  @@index([adminId], map: "admin_audit_logs_adminId_fkey")
+  @@map("admin_audit_logs")
+}
+
+model AdminSession {
+  id        String    @id @default(cuid())
+  adminId   String
+  token     String    @unique
+  expiresAt DateTime
+  isActive  Boolean   @default(true)
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+  admin     AdminUser @relation(fields: [adminId], references: [id])
+
+  @@index([adminId], map: "admin_sessions_adminId_fkey")
+  @@map("admin_sessions")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum UserRole {
+  BUSINESS_OWNER
+  CUSTOMER
+}
+
+enum BusinessStatus {
+  HIDDEN
+  PUBLISHED
 }
 
 enum ServiceStatus {
   HIDDEN
   PUBLISHED
-}
-
-model Service {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Decimal
-  duration    Int      // in minutes
-  businessId  String
-  categoryId  String
-  image       String?
-  isActive    Boolean  @default(true)
-  status      ServiceStatus @default(HIDDEN)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  business   Business @relation(fields: [businessId], references: [id])
-  bookings  Booking[]
-  
-  @@map("services")
 }
 
 enum BookingStatus {
@@ -110,140 +214,8 @@ enum BookingStatus {
   COMPLETED
 }
 
-model Booking {
-  id        String   @id @default(cuid())
-  date      DateTime
-  time      String
-  status    BookingStatus @default(PENDING)
-  notes     String?
-  userId    String
-  businessId String
-  serviceId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  user      User     @relation(fields: [userId], references: [id])
-  business  Business @relation(fields: [businessId], references: [id])
-  service   Service  @relation(fields: [serviceId], references: [id])
-  
-  @@map("bookings")
-}
-
-
-
-
-model Category {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  icon        String
-  color       String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  businesses Business[]
-  
-  @@map("categories")
-}
-
-model Promo {
-  id                 String   @id @default(cuid())
-  title              String
-  description        String
-  discountPercentage Int
-  businessId         String
-  startDate          DateTime
-  endDate            DateTime
-  isActive           Boolean  @default(true)
-  isFeatured         Boolean  @default(false)
-  isPromoted         Boolean  @default(false)
-  promoStartDate     DateTime?
-  promoEndDate       DateTime?
-  promoPrice         Decimal?
-  promoDescription   String?
-  promoImage         String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  
-  @@map("promos")
-}
-
-// Admin Users Schema - Separate from regular users for enhanced security
-model AdminUser {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String // Hashed password
-  role      AdminRole @default(SUPER_ADMIN)
-  
-  // Enhanced security fields
-  twoFactorEnabled Boolean @default(false)
-  twoFactorSecret  String? // For TOTP
-  lastLoginAt      DateTime?
-  loginAttempts    Int      @default(0)
-  lockedUntil      DateTime?
-  
-  // Admin-specific fields
-  permissions      String // Store as JSON string for MySQL compatibility
-  department      String?
-  employeeId      String? @unique
-  isActive        Boolean @default(true)
-  
-  // Audit fields
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdBy       String? // ID of admin who created this account
-  updatedBy       String? // ID of admin who last updated this account
-  
-  // Relations
-  auditLogs       AdminAuditLog[]
-  sessions        AdminSession[]
-  
-  @@map("admin_users")
-}
-
 enum AdminRole {
-  SUPER_ADMIN    // Full system access
-  MODERATOR      // Limited admin access
-  SUPPORT        // Customer support access
+  SUPER_ADMIN
+  MODERATOR
+  SUPPORT
 }
-
-// Admin Audit Logs
-model AdminAuditLog {
-  id          String      @id @default(cuid())
-  adminId     String      // ID of admin who performed action
-  action      String      // What action was performed
-  resource    String      // What resource was affected
-  resourceId  String?     // ID of affected resource
-  details     Json?       // Additional details about the action
-  ipAddress   String?     // IP address of admin
-  userAgent   String?     // Browser/device info
-  timestamp   DateTime    @default(now())
-  
-  // Relations
-  admin       AdminUser   @relation(fields: [adminId], references: [id])
-  
-  @@map("admin_audit_logs")
-}
-
-// Admin Sessions
-model AdminSession {
-  id          String    @id @default(cuid())
-  adminId     String
-  token       String    @unique
-  expiresAt   DateTime
-  isActive    Boolean   @default(true)
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime  @default(now())
-  
-  // Relations
-  admin       AdminUser @relation(fields: [adminId], references: [id])
-  
-  @@map("admin_sessions")
-}
-
-

@@ -1,47 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database";
-import jwt from "jsonwebtoken";
+import { PrismaClient } from "@prisma/client";
+import { verifyAdminToken } from "@/lib/utils/route-guards";
 import { UserRole } from "@/types/user";
-import { config } from "@/lib/config";
 
-const ADMIN_JWT_SECRET = config.adminJwt.secret;
+const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin token
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    // Verify admin authentication
+    const admin = await verifyAdminToken(request);
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7);
-
-    let decoded: { adminId: string; role: string };
-    try {
-      decoded = jwt.verify(token, ADMIN_JWT_SECRET) as {
-        adminId: string;
-        role: string;
-      };
-    } catch {
+    // Check if admin has permission to view users
+    if (admin.role !== "SUPER_ADMIN" && admin.role !== "MODERATOR") {
       return NextResponse.json(
-        { success: false, error: "Invalid token" },
-        { status: 401 }
-      );
-    }
-
-    // Verify that the admin user exists and is active
-    const adminUser = await prisma.adminUser.findUnique({
-      where: { id: decoded.adminId },
-      select: { id: true, role: true, isActive: true }
-    });
-
-    if (!adminUser || !adminUser.isActive) {
-      return NextResponse.json(
-        { success: false, error: "Admin authentication failed" },
-        { status: 401 }
+        { error: "Insufficient permissions" },
+        { status: 403 }
       );
     }
 
@@ -74,6 +53,11 @@ export async function GET(request: NextRequest) {
       where.role = role as UserRole;
     }
 
+    // Note: Status filtering temporarily disabled until database is updated
+    // if (status !== "all") {
+    //   where.status = status as "ACTIVE" | "INACTIVE";
+    // }
+
     // Get users with pagination
     const [users, totalUsers] = await Promise.all([
       prisma.user.findMany({
@@ -96,7 +80,6 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(totalUsers / limit);
 
     return NextResponse.json({
-      success: true,
       users,
       pagination: {
         currentPage: page,
@@ -111,13 +94,13 @@ export async function GET(request: NextRequest) {
     // Check if it's an authentication-related error
     if (error instanceof Error && error.message.includes('Admin authentication failed')) {
       return NextResponse.json(
-        { success: false, error: "Admin authentication failed" },
+        { error: "Admin authentication failed" },
         { status: 401 }
       );
     }
     
     return NextResponse.json(
-      { success: false, error: "Failed to fetch users" },
+      { error: "Failed to fetch users" },
       { status: 500 }
     );
   }

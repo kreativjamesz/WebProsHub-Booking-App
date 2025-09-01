@@ -9,6 +9,24 @@ export interface Booking {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  // Relations
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  business?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  service?: {
+    id: string;
+    name: string;
+    price: number;
+    duration: number;
+  };
 }
 
 export interface BookingsState {
