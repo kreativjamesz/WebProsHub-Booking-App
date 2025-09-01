@@ -13,12 +13,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum UserRole {
+  BUSINESS_OWNER
+  CUSTOMER
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
   password  String?
   role      UserRole @default(CUSTOMER)
+  status    UserStatus @default(INACTIVE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -27,6 +38,11 @@ model User {
   businesses  Business[] // If user is business owner
   
   @@map("users")
+}
+
+enum BusinessStatus {
+  HIDDEN
+  PUBLISHED
 }
 
 model Business {
@@ -45,6 +61,8 @@ model Business {
   categoryId  String
   ownerId     String
   isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  status      BusinessStatus @default(HIDDEN)
   rating      Float    @default(0)
   reviewCount Int      @default(0)
   createdAt   DateTime @default(now())
@@ -59,6 +77,11 @@ model Business {
   @@map("businesses")
 }
 
+enum ServiceStatus {
+  HIDDEN
+  PUBLISHED
+}
+
 model Service {
   id          String   @id @default(cuid())
   name        String
@@ -69,6 +92,7 @@ model Service {
   categoryId  String
   image       String?
   isActive    Boolean  @default(true)
+  status      ServiceStatus @default(HIDDEN)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -77,6 +101,13 @@ model Service {
   bookings  Booking[]
   
   @@map("services")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
 }
 
 model Booking {
@@ -99,17 +130,8 @@ model Booking {
   @@map("bookings")
 }
 
-enum UserRole {
-  BUSINESS_OWNER
-  CUSTOMER
-}
 
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-}
+
 
 model Category {
   id          String   @id @default(cuid())
@@ -136,6 +158,13 @@ model Promo {
   startDate          DateTime
   endDate            DateTime
   isActive           Boolean  @default(true)
+  isFeatured         Boolean  @default(false)
+  isPromoted         Boolean  @default(false)
+  promoStartDate     DateTime?
+  promoEndDate       DateTime?
+  promoPrice         Decimal?
+  promoDescription   String?
+  promoImage         String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   

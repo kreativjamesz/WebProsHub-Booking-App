@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
+import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/adminApi";
+import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
 import {
-  fetchBusinesses,
-  deleteBusiness,
-  assignBusinessOwner,
-  updateBusinessStatus,
-} from "@/lib/stores/features/admin/adminBusinessesSlice";
+  useGetBusinessesQuery,
+  useDeleteBusinessMutation,
+  useAssignBusinessOwnerMutation,
+  useUpdateBusinessStatusMutation,
+} from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -57,34 +57,62 @@ import {
   Mail,
   Globe,
 } from "lucide-react";
-import { Business } from "@/lib/types";
+import { Business } from "@/types";
+import { toast } from "sonner";
 
 export default function AdminBusinessesPage() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
-  const { businesses, isLoadingBusinesses, error } = useAppSelector(
-    (state) => state.adminBusinesses
-  );
 
-  // RTK Query hook for logout
-  const [adminLogout] = useAdminLogoutMutation();
-
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
-    null
-  );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
   const [isAssigningOwner, setIsAssigningOwner] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState("");
 
-  useEffect(() => {
-    dispatch(fetchBusinesses({ page: 1 }));
-  }, [dispatch]);
+  // RTK Query hooks
+  const [adminLogout] = useAdminLogoutMutation();
+  const [deleteBusiness] = useDeleteBusinessMutation();
+  const [assignBusinessOwner] = useAssignBusinessOwnerMutation();
+  const [updateBusinessStatus] = useUpdateBusinessStatusMutation();
 
-  const handleDeleteBusiness = (businessId: string) => {
+  const {
+    data: businessesData,
+    isLoading: isLoadingBusinesses,
+    error: businessesError,
+    refetch: refetchBusinesses,
+  } = useGetBusinessesQuery({ 
+    page: currentPage, 
+    search: searchTerm, 
+    status: statusFilter, 
+    category: categoryFilter, 
+    city: cityFilter 
+  });
+
+  // Extract data from API response
+  const businesses = businessesData?.businesses || [];
+  const pagination = businessesData?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalBusinesses: 0,
+    businessesPerPage: 20
+  };
+
+  const handleDeleteBusiness = async (businessId: string) => {
     if (confirm("Are you sure you want to delete this business?")) {
-      dispatch(deleteBusiness(businessId));
+      try {
+        await deleteBusiness(businessId).unwrap();
+        toast.success("Business deleted successfully");
+        refetchBusinesses();
+      } catch (error: unknown) {
+        const errorMessage = (error as { data?: { error?: string } })?.data?.error || "Failed to delete business";
+        toast.error(errorMessage);
+        console.error("Delete error:", error);
+      }
     }
   };
 
@@ -92,19 +120,34 @@ export default function AdminBusinessesPage() {
     if (selectedBusiness && ownerEmail) {
       setIsAssigningOwner(true);
       try {
-        await dispatch(
-          assignBusinessOwner({ businessId: selectedBusiness.id, ownerEmail })
-        );
+        await assignBusinessOwner({ 
+          businessId: selectedBusiness.id, 
+          ownerEmail 
+        }).unwrap();
         setOwnerEmail("");
         setSelectedBusiness(null);
+        toast.success("Business owner assigned successfully");
+        refetchBusinesses();
+      } catch (error: unknown) {
+        const errorMessage = (error as { data?: { error?: string } })?.data?.error || "Failed to assign business owner";
+        toast.error(errorMessage);
+        console.error("Assign owner error:", error);
       } finally {
         setIsAssigningOwner(false);
       }
     }
   };
 
-  const handleToggleBusinessStatus = (businessId: string) => {
-    dispatch(updateBusinessStatus({ businessId, isActive: true }));
+  const handleToggleBusinessStatus = async (businessId: string) => {
+    try {
+      await updateBusinessStatus({ businessId, isActive: true }).unwrap();
+      toast.success("Business status updated successfully");
+      refetchBusinesses();
+    } catch (error: unknown) {
+      const errorMessage = (error as { data?: { error?: string } })?.data?.error || "Failed to update business status";
+      toast.error(errorMessage);
+      console.error("Status update error:", error);
+    }
   };
 
   const handleLogout = async () => {

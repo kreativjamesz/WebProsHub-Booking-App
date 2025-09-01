@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
+import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/adminApi";
-import { fetchBookings, updateBookingStatus, deleteBooking } from "@/lib/stores/features/admin/adminBookingsSlice";
+import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
+import { 
+  useGetBookingsQuery,
+  useUpdateBookingStatusMutation,
+  useDeleteBookingMutation
+} from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -58,44 +62,48 @@ import {
 } from "lucide-react";
 import { getCookie } from "@/lib/utils/cookies";
 import { toast } from "sonner";
-import { Booking } from "@/lib/types/booking";
+import { Booking } from "@/types/booking";
 
 export default function AdminBookingsPage() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
 
-  // Check admin token
-  const adminToken = getCookie('adminToken');
-  console.log('Admin Token:', adminToken ? 'Exists' : 'Missing');
-
-  // Use Redux slice instead of mock data
-  const {
-    bookings,
-    isLoadingBookings,
-    error: bookingsError,
-  } = useAppSelector((state) => state.adminBookings);
-
-  // RTK Query hook for logout
-  const [adminLogout] = useAdminLogoutMutation();
-
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
 
-  // Fetch bookings when component mounts or filters change
-  useEffect(() => {
-    if (adminToken) {
-      console.log('Fetching bookings with Redux slice...');
-      dispatch(fetchBookings({
-        page: 1,
-        search: searchTerm,
-        status: statusFilter,
-        date: dateFilter,
-      }));
-    }
-  }, [dispatch, adminToken, searchTerm, statusFilter, dateFilter]);
+  // Check admin token
+  const adminToken = getCookie('adminToken');
+  console.log('Admin Token:', adminToken ? 'Exists' : 'Missing');
+
+  // RTK Query hooks
+  const [adminLogout] = useAdminLogoutMutation();
+  const [updateBookingStatus] = useUpdateBookingStatusMutation();
+  const [deleteBooking] = useDeleteBookingMutation();
+
+  const {
+    data: bookingsData,
+    isLoading: isLoadingBookings,
+    error: bookingsError,
+    refetch: refetchBookings,
+  } = useGetBookingsQuery({ 
+    page: currentPage, 
+    search: searchTerm, 
+    status: statusFilter, 
+    date: dateFilter 
+  });
+
+  // Extract data from API response
+  const bookings = bookingsData?.bookings || [];
+  const pagination = bookingsData?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalBookings: 0,
+    bookingsPerPage: 20
+  };
 
   const handleLogout = async () => {
     try {
@@ -115,17 +123,12 @@ export default function AdminBookingsPage() {
 
   const handleStatusUpdate = async (bookingId: string, newStatus: string) => {
     try {
-      await dispatch(updateBookingStatus({ bookingId, status: newStatus })).unwrap();
+      await updateBookingStatus({ bookingId, status: newStatus }).unwrap();
       toast.success("Booking status updated successfully");
-      // Refresh the data
-      dispatch(fetchBookings({
-        page: 1,
-        search: searchTerm,
-        status: statusFilter,
-        date: dateFilter,
-      }));
-    } catch (error) {
-      toast.error("Failed to update booking status");
+      refetchBookings();
+    } catch (error: unknown) {
+      const errorMessage = (error as { data?: { error?: string } })?.data?.error || "Failed to update booking status";
+      toast.error(errorMessage);
       console.error("Status update error:", error);
     }
   };
@@ -133,17 +136,12 @@ export default function AdminBookingsPage() {
   const handleDeleteBooking = async (bookingId: string) => {
     if (confirm("Are you sure you want to delete this booking?")) {
       try {
-        await dispatch(deleteBooking(bookingId)).unwrap();
+        await deleteBooking(bookingId).unwrap();
         toast.success("Booking deleted successfully");
-        // Refresh the data
-        dispatch(fetchBookings({
-          page: 1,
-          search: searchTerm,
-          status: statusFilter,
-          date: dateFilter,
-        }));
-      } catch (error) {
-        toast.error("Failed to delete booking");
+        refetchBookings();
+      } catch (error: unknown) {
+        const errorMessage = (error as { data?: { error?: string } })?.data?.error || "Failed to delete booking";
+        toast.error(errorMessage);
         console.error("Delete error:", error);
       }
     }

@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import { fetchUsers, updateUserRole, deleteUser } from "@/lib/stores/features/admin/adminUsersSlice";
+import {
+  useGetUsersQuery,
+  useUpdateUserRoleMutation,
+  useDeleteUserMutation,
+} from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,56 +27,84 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { Search, Users, UserCheck, Building2 } from "lucide-react";
+import { Search, Users, UserCheck, Building2, LogOut } from "lucide-react";
 import { toast } from "sonner";
-import { User } from "@/lib/types/user";
+import { User } from "@/types/user";
+import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
+import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
+import { removeCookie } from "@/lib/utils/cookies";
+import { adminStorage } from "@/lib/utils/storage";
+import { useRouter } from "next/navigation";
 import { getCookie } from "@/lib/utils/cookies";
 
 export default function AdminUsersPage() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
+  const { adminUser } = useAppSelector((state) => state.adminAuth);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Check admin token
-  const adminToken = getCookie('adminToken');
-  console.log('Admin Token:', adminToken ? 'Exists' : 'Missing');
+  const adminToken = getCookie("adminToken");
+  console.log("Admin Token:", adminToken ? "Exists" : "Missing");
 
-  // Use Redux slice instead of RTK Query (same as dashboard)
+  // RTK Query hooks
+  const [adminLogout] = useAdminLogoutMutation();
+  const [updateUserRole] = useUpdateUserRoleMutation();
+  const [deleteUser] = useDeleteUserMutation();
+
   const {
-    users,
-    isLoadingUsers,
+    data: usersData,
+    isLoading: isLoadingUsers,
     error: usersError,
-  } = useAppSelector((state) => state.adminUsers);
+    refetch: refetchUsers,
+  } = useGetUsersQuery({
+    page: currentPage,
+    search: searchTerm,
+    role: roleFilter,
+    status: statusFilter,
+  });
 
-  // Fetch users when component mounts or filters change
-  useEffect(() => {
-    if (adminToken) {
-      console.log('Fetching users with Redux slice...');
-      dispatch(fetchUsers({
-        page: currentPage,
-        search: searchTerm,
-        role: roleFilter,
-        status: statusFilter,
-      }));
+  // Extract data from API response
+  const users = usersData?.users || [];
+  const pagination = usersData?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalUsers: 0,
+    usersPerPage: 20,
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await adminLogout().unwrap();
+      dispatch(clearAdminUser());
+      removeCookie("adminToken");
+      adminStorage.clearAdmin();
+      router.push("/admin-login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      dispatch(clearAdminUser());
+      removeCookie("adminToken");
+      adminStorage.clearAdmin();
+      router.push("/admin-login");
     }
-  }, [dispatch, adminToken, currentPage, searchTerm, roleFilter, statusFilter]);
+  };
 
   // Handle role update
   const handleRoleUpdate = async (userId: string, newRole: string) => {
     try {
-      await dispatch(updateUserRole({ userId, role: newRole as User["role"] })).unwrap();
+      await updateUserRole({ userId, role: newRole as User["role"] }).unwrap();
       toast.success("User role updated successfully");
-      // Refresh the data
-      dispatch(fetchUsers({
-        page: currentPage,
-        search: searchTerm,
-        role: roleFilter,
-        status: statusFilter,
-      }));
-    } catch (error) {
-      toast.error("Failed to update user role");
+      refetchUsers();
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { data?: { error?: string } })?.data?.error ||
+        "Failed to update user role";
+      toast.error(errorMessage);
       console.error("Role update error:", error);
     }
   };
@@ -81,29 +113,30 @@ export default function AdminUsersPage() {
   const handleDeleteUser = async (userId: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
       try {
-        await dispatch(deleteUser(userId)).unwrap();
+        await deleteUser(userId).unwrap();
         toast.success("User deleted successfully");
-        // Refresh the data
-        dispatch(fetchUsers({
-          page: currentPage,
-          search: searchTerm,
-          role: roleFilter,
-          status: statusFilter,
-        }));
-      } catch (error) {
-        toast.error("Failed to delete user");
+        refetchUsers();
+      } catch (error: unknown) {
+        const errorMessage =
+          (error as { data?: { error?: string } })?.data?.error ||
+          "Failed to delete user";
+        toast.error(errorMessage);
         console.error("Delete error:", error);
       }
     }
   };
 
   // Calculate statistics
-  const totalUsers = users?.length || 0;
-  const customers = users?.filter((u: User) => u.role === "CUSTOMER").length || 0;
-  const businessOwners = users?.filter(
-    (u: User) => u.role === "BUSINESS_OWNER"
-  ).length || 0;
-  const activeUsers = users?.length || 0;
+  const totalUsers = pagination.totalUsers;
+  const customers = users.filter(
+    (user: User) => user.role === "CUSTOMER"
+  ).length;
+  const businessOwners = users.filter(
+    (user: User) => user.role === "BUSINESS_OWNER"
+  ).length;
+  // Note: Regular users don't have isActive field, only AdminUsers do
+  const activeUsers = users.length; // All users are considered active
+  const inactiveUsers = 0; // No inactive users in current schema
 
   if (usersError) {
     return (
@@ -112,7 +145,8 @@ export default function AdminUsersPage() {
           <CardContent className="pt-6">
             <div className="text-center text-red-600">
               Error loading users:{" "}
-              {usersError || "Unknown error"}
+              {(usersError as { data?: { error?: string } })?.data?.error ||
+                "Unknown error"}
             </div>
           </CardContent>
         </Card>
@@ -124,10 +158,20 @@ export default function AdminUsersPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">User Management</h1>
-        <div className="flex items-center space-x-2">
-          <Badge variant={adminToken ? "default" : "destructive"}>
-            {adminToken ? "Authenticated" : "Not Authenticated"}
-          </Badge>
+        <div className="flex items-center space-x-4">
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Welcome back,</p>
+            <p className="font-semibold">{adminUser?.name}</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="text-destructive hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
         </div>
       </div>
 
@@ -217,12 +261,7 @@ export default function AdminUsersPage() {
               </SelectContent>
             </Select>
 
-            <Button onClick={() => dispatch(fetchUsers({
-              page: currentPage,
-              search: searchTerm,
-              role: roleFilter,
-              status: statusFilter,
-            }))} variant="outline">
+            <Button onClick={() => dispatch(refetchUsers)} variant="outline">
               Refresh
             </Button>
           </div>

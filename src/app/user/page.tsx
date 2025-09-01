@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { User, Calendar, Star, Settings, Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Booking, Favorite } from "@/lib/types";
+import { Booking, Favorite } from "@/types";
 
 export default function UserDashboard() {
   const { user } = useAppSelector((state) => state.auth);

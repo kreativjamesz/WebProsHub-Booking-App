@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import jwt from "jsonwebtoken";
-import { UserRole } from "@/lib/types/user";
+import { UserRole } from "@/types/user";
 import { config } from "@/lib/config";
 
 const ADMIN_JWT_SECRET = config.adminJwt.secret;

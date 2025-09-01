@@ -1,34 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
+import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
-import { useFetchingUsersQuery } from "@/lib/stores/features/admin/adminApi";
-import { fetchUsers } from "@/lib/stores/features/admin/users/adminUsersSlice";
-import { fetchBusinesses } from "@/lib/stores/features/admin/businesses/adminBusinessesSlice";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  useGetUsersQuery,
+  useGetBusinessesQuery,
+  useGetSystemStatsQuery,
+} from "@/stores/slices/private/admin.api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Users,
   Building,
   Settings,
   Shield,
-  MapPin,
   Star,
   LogOut,
-  TrendingUp,
   Calendar,
   Activity,
   ArrowRight,
@@ -39,44 +31,47 @@ import {
 } from "lucide-react";
 import { StatCard } from "@/components/admin/StatCard";
 import { ChartCard } from "@/components/admin/ChartCard";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/auth/adminAuthApi";
+import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
+import { type Business } from "@/types/business";
+import { type User } from "@/types/user";
 
 export default function AdminDashboard() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
-  const {
-    users,
-    isLoadingUsers,
-    error: usersError,
-  } = useAppSelector((state) => state.adminUsers);
-  const {
-    businesses: allBusinesses,
-    isLoadingBusinesses,
-    error: businessesError,
-  } = useAppSelector((state) => state.adminBusinesses);
 
-  const error = usersError || businessesError;
-
-  // RTK Query hook for logout
+  // RTK Query hooks
   const [adminLogout] = useAdminLogoutMutation();
 
-  // RTK Query hook for fetching users (to compare with manual fetch)
   const {
-    data: rtkUsers,
-    isLoading: isLoadingRtkUsers,
-    error: rtkUsersError,
-    refetch: refetchRtkUsers,
-  } = useFetchingUsersQuery(
-    { page: 1, search: "", role: "all", status: "all" },
-    { skip: true } // Don't fetch automatically, only when button is clicked
-  );
+    data: usersData,
+    isLoading: isLoadingUsers,
+    error: usersError,
+  } = useGetUsersQuery({ page: 1, search: "", role: "all", status: "all" });
 
-  useEffect(() => {
-    // Fetch initial data for dashboard
-    dispatch(fetchUsers({ page: 1 }));
-    dispatch(fetchBusinesses({ page: 1 }));
-  }, [dispatch]);
+  const {
+    data: businessesData,
+    isLoading: isLoadingBusinesses,
+    error: businessesError,
+  } = useGetBusinessesQuery({
+    page: 1,
+    search: "",
+    status: "all",
+    category: "all",
+    city: "all",
+  });
+
+  const {
+    data: systemStats,
+    isLoading: isLoadingStats,
+    error: statsError,
+  } = useGetSystemStatsQuery(undefined);
+
+  const error = usersError || businessesError || statsError;
+
+  // Extract data from API responses
+  const users = usersData?.users || [];
+  const allBusinesses = businessesData?.businesses || [];
 
   const handleLogout = async () => {
     try {
@@ -95,12 +90,17 @@ export default function AdminDashboard() {
   };
 
   // Calculate statistics
-  const totalUsers = users?.length || 0;
-  const totalBusinesses = allBusinesses?.length || 0;
-  const activeBusinesses = allBusinesses?.filter((b) => b.isActive).length || 0;
-  const customers = users?.filter((u) => u.role === "CUSTOMER").length || 0;
-  const businessOwners =
-    users?.filter((u) => u.role === "BUSINESS_OWNER").length || 0;
+  const totalUsers = users.length;
+  const totalBusinesses = allBusinesses.length;
+  const activeBusinesses = allBusinesses.filter(
+    (business: Business) => business.isActive
+  ).length;
+  const customers = users.filter(
+    (user: User) => user.role === "CUSTOMER"
+  ).length;
+  const businessOwners = users.filter(
+    (user: User) => user.role === "BUSINESS_OWNER"
+  ).length;
 
   if (error) {
     return (
@@ -109,7 +109,9 @@ export default function AdminDashboard() {
           <Alert className="border-destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Error loading dashboard data: {error}
+              Error loading dashboard data:{" "}
+              {(error as { data?: { error?: string } })?.data?.error ||
+                "Unknown error"}
             </AlertDescription>
           </Alert>
         </div>
@@ -226,82 +228,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* API Test Buttons - Compare Manual Fetch vs RTK Query */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">
-            API Test - Manual Fetch vs RTK Query
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5 text-blue-600" />
-                  <span>Manual Fetch (Slice)</span>
-                </CardTitle>
-                <CardDescription>
-                  Uses fetchUsers from adminUsersSlice with async thunk
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button
-                  onClick={() => dispatch(fetchUsers({ page: 1 }))}
-                  disabled={isLoadingUsers}
-                  className="w-full"
-                >
-                  {isLoadingUsers ? "Loading..." : "Test Manual Fetch Users"}
-                </Button>
-                <div className="text-sm">
-                  <p>
-                    <strong>Status:</strong>{" "}
-                    {isLoadingUsers ? "Loading..." : "Ready"}
-                  </p>
-                  <p>
-                    <strong>Users Count:</strong> {users?.length || 0}
-                  </p>
-                  <p>
-                    <strong>Error:</strong> {usersError || "None"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BarChart3 className="h-5 w-5 text-green-600" />
-                  <span>RTK Query</span>
-                </CardTitle>
-                <CardDescription>
-                  Uses useFetchingUsersQuery from adminApi
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button
-                  onClick={() => refetchRtkUsers()}
-                  disabled={isLoadingRtkUsers}
-                  className="w-full"
-                  variant="outline"
-                >
-                  {isLoadingRtkUsers ? "Loading..." : "Test RTK Query Users"}
-                </Button>
-                <div className="text-sm">
-                  <p>
-                    <strong>Status:</strong>{" "}
-                    {isLoadingRtkUsers ? "Loading..." : "Ready"}
-                  </p>
-                  <p>
-                    <strong>Users Count:</strong> {rtkUsers?.length || 0}
-                  </p>
-                  <p>
-                    <strong>Error:</strong>{" "}
-                    {rtkUsersError ? "Error occurred" : "None"}
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -426,9 +352,9 @@ export default function AdminDashboard() {
           >
             <div className="space-y-3">
               {allBusinesses && allBusinesses.length > 0 ? (
-                allBusinesses.slice(0, 5).map((business, index) => (
+                allBusinesses.slice(0, 5).map((business: Business, index: number) => (
                   <div
-                    key={business.id}
+                    key={`${index}-${business.id}`}
                     className="flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-2">
@@ -469,9 +395,9 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {allBusinesses && allBusinesses.length > 0 ? (
-                  allBusinesses.slice(0, 5).map((business, index) => (
+                  allBusinesses.slice(0, 5).map((business: Business, index: number) => (
                     <div
-                      key={business.id}
+                      key={`${index}-${business.id}`}
                       className="flex items-start space-x-3"
                     >
                       <div

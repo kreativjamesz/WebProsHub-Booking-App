@@ -3,9 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import { fetchFeaturedBusinesses } from "@/lib/stores/features/businesses/businessesSlice";
-import { fetchFeaturedPromos } from "@/lib/stores/features/promos/promosSlice";
-import { fetchCategories } from "@/lib/stores/features/categories/categoriesSlice";
+import { fetchFeaturedBusinesses, fetchPublicCategories } from "@/stores/slices/public/public.slice";
+import { fetchFeaturedPromos } from "@/stores/slices/public/public.slice";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,6 +30,7 @@ import {
   Sparkles
 } from "lucide-react";
 import Image from "next/image";
+import { Business } from "@/types";
 
 export default function HomePage() {
   const dispatch = useAppDispatch();
@@ -47,7 +47,7 @@ export default function HomePage() {
   useEffect(() => {
     dispatch(fetchFeaturedBusinesses());
     dispatch(fetchFeaturedPromos());
-    dispatch(fetchCategories());
+    dispatch(fetchPublicCategories());
   }, [dispatch]);
 
   const getInitials = (name: string) => {
@@ -204,7 +204,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredBusinesses?.slice(0, 6).map((business) => (
+              {featuredBusinesses?.slice(0, 6).map((business: Business) => (
                 <Card key={business.id} className="group hover:shadow-lg transition-all duration-200 overflow-hidden hover:scale-105">
                   <div className="aspect-video relative overflow-hidden">
                     {business.coverImage ? (

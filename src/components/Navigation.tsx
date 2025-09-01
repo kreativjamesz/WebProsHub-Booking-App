@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAppSelector, useAppDispatch, useUserRoles } from "@/lib/hooks";
-import { clearUser } from "@/lib/stores/features/auth/authSlice";
-import { useLogoutMutation } from "@/lib/stores/features/auth/auth.api";
+import { clearUser } from "@/stores/slices/auth/auth.slice";
+import { useLogoutMutation } from "@/stores/slices/auth/auth.api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {

@@ -3,34 +3,51 @@
 import { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/adminApi";
+import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
+import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
+import {
+  useGetAdminsQuery,
+  useCreateAdminMutation,
+  useUpdateAdminMutation,
+  useDeleteAdminMutation,
+} from "@/stores/slices/private/admin.api";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Users, 
-  Shield, 
-  UserPlus, 
-  Search, 
-  Edit, 
-  LogOut, 
+import {
+  Users,
+  Shield,
+  UserPlus,
+  Search,
+  Edit,
+  LogOut,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Crown,
   UserCheck,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import { getCookie } from "@/lib/utils/cookies";
 import { toast } from "sonner";
-import { AdminUser } from "@/lib/types/admin";
+import { type AdminUser } from "@/stores/slices/private/admin.types";
 
 export default function AdminsPage() {
   const router = useRouter();
@@ -39,65 +56,54 @@ export default function AdminsPage() {
   const [adminLogout] = useAdminLogoutMutation();
 
   // Check admin token
-  const adminToken = getCookie('adminToken');
-  console.log('Admin Token:', adminToken ? 'Exists' : 'Missing');
+  const adminToken = getCookie("adminToken");
+  console.log("Admin Token:", adminToken ? "Exists" : "Missing");
 
   // Check if user is SUPER_ADMIN
   useEffect(() => {
-    if (adminUser && adminUser.role !== 'SUPER_ADMIN') {
-      router.replace('/admin');
+    if (adminUser && adminUser.role !== "SUPER_ADMIN") {
+      router.replace("/admin");
     }
   }, [adminUser, router]);
 
-  // Mock data for admins (since API isn't fully implemented yet)
-  const [admins, setAdmins] = useState<AdminUser[]>([
-    {
-      id: "admin-1",
-      name: "John Admin",
-      email: "john.admin@company.com",
-      role: "SUPER_ADMIN",
-      department: "IT",
-      employeeId: "EMP001",
-      permissions: ["user_management", "business_management", "booking_management", "admin_management"],
-      isActive: true,
-      lastLogin: "2024-01-15T10:30:00Z",
-      createdAt: "2023-06-01T00:00:00Z",
-      lastModified: "2024-01-10T14:20:00Z"
-    },
-    {
-      id: "admin-2",
-      name: "Sarah Manager",
-      email: "sarah.manager@company.com",
-      role: "MODERATOR",
-      department: "Operations",
-      employeeId: "EMP002",
-      permissions: ["business_management", "booking_management"],
-      isActive: true,
-      lastLogin: "2024-01-14T16:45:00Z",
-      createdAt: "2023-08-15T00:00:00Z",
-      lastModified: "2024-01-12T09:15:00Z"
-    },
-    {
-      id: "admin-3",
-      name: "Mike Support",
-      email: "mike.support@company.com",
-      role: "SUPPORT",
-      department: "Customer Service",
-      employeeId: "EMP003",
-      permissions: ["booking_management"],
-      isActive: false,
-      lastLogin: "2024-01-10T11:20:00Z",
-      createdAt: "2023-09-20T00:00:00Z",
-      lastModified: "2024-01-08T13:30:00Z"
-    }
-  ]);
+  // State for filters and pagination
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // RTK Query hooks
+  const {
+    data: adminsData,
+    isLoading: isLoadingAdmins,
+    error: adminsError,
+    refetch: refetchAdmins,
+  } = useGetAdminsQuery({
+    page: currentPage,
+    search: searchTerm,
+    role: roleFilter,
+    status: statusFilter,
+  });
+
+  const [createAdmin, { isLoading: isCreatingAdmin }] =
+    useCreateAdminMutation();
+  const [updateAdmin, { isLoading: isUpdatingAdmin }] =
+    useUpdateAdminMutation();
+  const [deleteAdmin, { isLoading: isDeletingAdmin }] =
+    useDeleteAdminMutation();
+
+  // Extract data from API response
+  const admins = adminsData?.admins || [];
+  const pagination = adminsData?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalAdmins: 0,
+    adminsPerPage: 20,
+  };
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   const handleLogout = async () => {
     try {
@@ -115,38 +121,40 @@ export default function AdminsPage() {
     }
   };
 
-  const handleCreateAdmin = async (adminData: Omit<AdminUser, 'id' | 'createdAt' | 'lastModified' | 'lastLogin'>) => {
+  const handleCreateAdmin = async (
+    adminData: Omit<AdminUser, "id" | "createdAt" | "updatedAt" | "lastLoginAt">
+  ) => {
     try {
-      // Mock creation for now
-      const newAdmin: AdminUser = {
-        ...adminData,
-        id: `admin-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        lastModified: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      };
-      setAdmins(prev => [...prev, newAdmin]);
+      await createAdmin(adminData).unwrap();
       toast.success("Admin user created successfully");
       setIsCreateDialogOpen(false);
-    } catch (error) {
-      toast.error("Failed to create admin user");
+      refetchAdmins();
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { data?: { error?: string } })?.data?.error ||
+        "Failed to create admin user";
+      toast.error(errorMessage);
       console.error("Create error:", error);
     }
   };
 
-  const handleUpdateAdmin = async (adminId: string, updates: Partial<Omit<AdminUser, 'id' | 'createdAt' | 'lastModified' | 'lastLogin'>>) => {
+  const handleUpdateAdmin = async (
+    adminId: string,
+    updates: Partial<
+      Omit<AdminUser, "id" | "createdAt" | "updatedAt" | "lastLoginAt">
+    >
+  ) => {
     try {
-      // Mock update for now
-      setAdmins(prev => prev.map(admin => 
-        admin.id === adminId 
-          ? { ...admin, ...updates, lastModified: new Date().toISOString() }
-          : admin
-      ));
+      await updateAdmin({ adminId, updates }).unwrap();
       toast.success("Admin user updated successfully");
       setIsEditDialogOpen(false);
       setSelectedAdmin(null);
-    } catch (error) {
-      toast.error("Failed to update admin user");
+      refetchAdmins();
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { data?: { error?: string } })?.data?.error ||
+        "Failed to update admin user";
+      toast.error(errorMessage);
       console.error("Update error:", error);
     }
   };
@@ -154,41 +162,41 @@ export default function AdminsPage() {
   const handleDeleteAdmin = async (adminId: string) => {
     if (confirm("Are you sure you want to delete this admin user?")) {
       try {
-        // Mock deletion for now
-        setAdmins(prev => prev.filter(admin => admin.id !== adminId));
+        await deleteAdmin(adminId).unwrap();
         toast.success("Admin user deleted successfully");
-      } catch (error) {
-        toast.error("Failed to delete admin user");
+        refetchAdmins();
+      } catch (error: unknown) {
+        const errorMessage =
+          (error as { data?: { error?: string } })?.data?.error ||
+          "Failed to delete admin user";
+        toast.error(errorMessage);
         console.error("Delete error:", error);
       }
     }
   };
 
-  // Filter admins based on search and filters
-  const filteredAdmins = admins.filter((admin) => {
-    const matchesSearch = searchTerm === "" || 
-      admin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      admin.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      admin.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesRole = roleFilter === "all" || admin.role === roleFilter;
-    const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "active" && admin.isActive) ||
-      (statusFilter === "inactive" && !admin.isActive);
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
   // Calculate statistics
-  const totalAdmins = admins.length;
-  const activeAdmins = admins.filter(a => a.isActive).length;
-  const superAdmins = admins.filter(a => a.role === 'SUPER_ADMIN').length;
-  const regularAdmins = admins.filter(a => a.role === 'ADMIN').length;
+  const totalAdmins = pagination.totalAdmins;
+  const activeAdmins = admins.filter((a: AdminUser) => a.isActive).length;
+  const superAdmins = admins.filter(
+    (a: AdminUser) => a.role === "SUPER_ADMIN"
+  ).length;
+  const moderatorAdmins = admins.filter(
+    (a: AdminUser) => a.role === "MODERATOR"
+  ).length;
+  const supportAdmins = admins.filter(
+    (a: AdminUser) => a.role === "SUPPORT"
+  ).length;
 
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "SUPER_ADMIN":
-        return <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1"><Crown className="h-3 w-3" />Super Admin</Badge>;
+        return (
+          <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1">
+            <Crown className="h-3 w-3" />
+            Super Admin
+          </Badge>
+        );
       case "MODERATOR":
         return <Badge className="bg-blue-100 text-blue-800">Moderator</Badge>;
       case "SUPPORT":
@@ -201,33 +209,42 @@ export default function AdminsPage() {
   const getStatusBadge = (isActive: boolean) => {
     return isActive ? (
       <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
-        <CheckCircle className="h-3 w-3" />Active
+        <CheckCircle className="h-3 w-3" />
+        Active
       </Badge>
     ) : (
       <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
-        <XCircle className="h-3 w-3" />Inactive
+        <XCircle className="h-3 w-3" />
+        Inactive
       </Badge>
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Never";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  if (adminUser?.role !== 'SUPER_ADMIN') {
+  if (adminUser?.role !== "SUPER_ADMIN") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-4">You don&apos;t have permission to access this page.</p>
-          <Button onClick={() => router.push('/admin')}>Back to Dashboard</Button>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Access Denied
+          </h1>
+          <p className="text-gray-600 mb-4">
+            You don&apos;t have permission to access this page.
+          </p>
+          <Button onClick={() => router.push("/admin")}>
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );
@@ -284,7 +301,9 @@ export default function AdminsPage() {
                   <Users className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Admins</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Total Admins
+                  </p>
                   <p className="text-2xl font-bold">{totalAdmins}</p>
                 </div>
               </div>
@@ -297,7 +316,9 @@ export default function AdminsPage() {
                   <UserCheck className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Admins</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Active Admins
+                  </p>
                   <p className="text-2xl font-bold">{activeAdmins}</p>
                 </div>
               </div>
@@ -310,7 +331,9 @@ export default function AdminsPage() {
                   <Crown className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Super Admins</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Super Admins
+                  </p>
                   <p className="text-2xl font-bold">{superAdmins}</p>
                 </div>
               </div>
@@ -323,8 +346,25 @@ export default function AdminsPage() {
                   <Shield className="h-6 w-6 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Regular Admins</p>
-                  <p className="text-2xl font-bold">{regularAdmins}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Moderator Admins
+                  </p>
+                  <p className="text-2xl font-bold">{moderatorAdmins}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Shield className="h-6 w-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Support Admins
+                  </p>
+                  <p className="text-2xl font-bold">{supportAdmins}</p>
                 </div>
               </div>
             </CardContent>
@@ -372,7 +412,10 @@ export default function AdminsPage() {
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="ml-2">
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="ml-2"
+            >
               <UserPlus className="h-4 w-4 mr-2" />
               Add Admin
             </Button>
@@ -391,63 +434,103 @@ export default function AdminsPage() {
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium">Name</th>
                     <th className="text-left py-3 px-4 font-medium">Role</th>
-                    <th className="text-left py-3 px-4 font-medium">Department</th>
+                    <th className="text-left py-3 px-4 font-medium">
+                      Department
+                    </th>
                     <th className="text-left py-3 px-4 font-medium">Status</th>
-                    <th className="text-left py-3 px-4 font-medium">Last Login</th>
+                    <th className="text-left py-3 px-4 font-medium">
+                      Last Login
+                    </th>
                     <th className="text-left py-3 px-4 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAdmins.map((admin) => (
-                    <tr key={admin.id} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="font-medium">{admin.name}</p>
-                          <p className="text-sm text-muted-foreground">{admin.email}</p>
-                          <p className="text-xs text-muted-foreground">ID: {admin.employeeId}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {getRoleBadge(admin.role)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant="outline">{admin.department}</Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        {getStatusBadge(admin.isActive)}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-muted-foreground">
-                        {formatDate(admin.lastLogin)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedAdmin(admin)}
-                            onDoubleClick={() => handleUpdateAdmin(admin.id, admin)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteAdmin(admin.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  {isLoadingAdmins ? (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="py-8 text-center text-muted-foreground"
+                      >
+                        Loading admins...
                       </td>
                     </tr>
-                  ))}
+                  ) : adminsError ? (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="py-8 text-center text-destructive"
+                      >
+                        Error loading admins:{" "}
+                        {(adminsError as { data?: { error?: string } })?.data
+                          ?.error || "Unknown error"}
+                      </td>
+                    </tr>
+                  ) : admins.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="py-8 text-center text-muted-foreground"
+                      >
+                        No admins found matching your criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    admins.map((admin: AdminUser) => (
+                      <tr key={admin.id} className="border-b hover:bg-muted/50">
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium">{admin.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {admin.email}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              ID: {admin.employeeId || "N/A"}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          {getRoleBadge(admin.role)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge variant="outline">
+                            {admin.department || "N/A"}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          {getStatusBadge(admin.isActive)}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">
+                          {formatDate(admin.lastLoginAt || null)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedAdmin(admin);
+                                setIsEditDialogOpen(true);
+                              }}
+                              disabled={isUpdatingAdmin}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteAdmin(admin.id)}
+                              className="text-destructive hover:text-destructive"
+                              disabled={isDeletingAdmin}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
-              {filteredAdmins.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No admins found matching your criteria.
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -465,19 +548,31 @@ export default function AdminsPage() {
                 <label className="text-sm font-medium">Name</label>
                 <Input
                   value={selectedAdmin.name}
-                  onChange={(e) => setSelectedAdmin({...selectedAdmin, name: e.target.value})}
+                  onChange={(e) =>
+                    setSelectedAdmin({ ...selectedAdmin, name: e.target.value })
+                  }
                 />
               </div>
               <div>
                 <label className="text-sm font-medium">Email</label>
                 <Input
                   value={selectedAdmin.email}
-                  onChange={(e) => setSelectedAdmin({...selectedAdmin, email: e.target.value})}
+                  onChange={(e) =>
+                    setSelectedAdmin({
+                      ...selectedAdmin,
+                      email: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div>
                 <label className="text-sm font-medium">Role</label>
-                                 <Select value={selectedAdmin.role} onValueChange={(value: AdminUser['role']) => setSelectedAdmin({...selectedAdmin, role: value})}>
+                <Select
+                  value={selectedAdmin.role}
+                  onValueChange={(value: AdminUser["role"]) =>
+                    setSelectedAdmin({ ...selectedAdmin, role: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -491,14 +586,21 @@ export default function AdminsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Department</label>
-                <Select value={selectedAdmin.department} onValueChange={(value) => setSelectedAdmin({...selectedAdmin, department: value})}>
+                <Select
+                  value={selectedAdmin.department || ""}
+                  onValueChange={(value) =>
+                    setSelectedAdmin({ ...selectedAdmin, department: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="IT">IT</SelectItem>
                     <SelectItem value="Operations">Operations</SelectItem>
-                    <SelectItem value="Customer Service">Customer Service</SelectItem>
+                    <SelectItem value="Customer Service">
+                      Customer Service
+                    </SelectItem>
                     <SelectItem value="Marketing">Marketing</SelectItem>
                     <SelectItem value="Finance">Finance</SelectItem>
                   </SelectContent>
@@ -507,13 +609,26 @@ export default function AdminsPage() {
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={selectedAdmin.isActive}
-                  onCheckedChange={(checked) => setSelectedAdmin({...selectedAdmin, isActive: checked})}
+                  onCheckedChange={(checked) =>
+                    setSelectedAdmin({ ...selectedAdmin, isActive: checked })
+                  }
                 />
                 <label className="text-sm font-medium">Active</label>
               </div>
               <div className="flex space-x-2">
-                <Button onClick={() => handleUpdateAdmin(selectedAdmin.id, selectedAdmin)}>Update</Button>
-                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={() =>
+                    handleUpdateAdmin(selectedAdmin.id, selectedAdmin)
+                  }
+                >
+                  Update
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           )}
@@ -524,19 +639,32 @@ export default function AdminsPage() {
       {/* This dialog is not directly managed by isEditDialogOpen, so it needs its own state */}
       {/* For simplicity, we'll keep it as a separate dialog */}
       {selectedAdmin && (
-        <Dialog open={true} onOpenChange={(open) => {
-          if (!open) {
-            setSelectedAdmin(null);
-          }
-        }}>
+        <Dialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedAdmin(null);
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete Admin</DialogTitle>
             </DialogHeader>
-            <p>Are you sure you want to delete {selectedAdmin.name}? This action cannot be undone.</p>
+            <p>
+              Are you sure you want to delete {selectedAdmin.name}? This action
+              cannot be undone.
+            </p>
             <div className="flex space-x-2">
-              <Button variant="destructive" onClick={() => handleDeleteAdmin(selectedAdmin.id)}>Delete</Button>
-              <Button variant="outline" onClick={() => setSelectedAdmin(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleDeleteAdmin(selectedAdmin.id)}
+              >
+                Delete
+              </Button>
+              <Button variant="outline" onClick={() => setSelectedAdmin(null)}>
+                Cancel
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -548,7 +676,10 @@ export default function AdminsPage() {
           <DialogHeader>
             <DialogTitle>Add New Admin</DialogTitle>
           </DialogHeader>
-          <CreateAdminForm onSubmit={handleCreateAdmin} onCancel={() => setIsCreateDialogOpen(false)} />
+          <CreateAdminForm
+            onSubmit={handleCreateAdmin}
+            onCancel={() => setIsCreateDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -556,21 +687,26 @@ export default function AdminsPage() {
 }
 
 // Create Admin Form Component
-function CreateAdminForm({ 
-  onSubmit, 
-  onCancel 
-}: { 
-  onSubmit: (admin: Omit<AdminUser, 'id' | 'createdAt' | 'lastModified' | 'lastLogin'>) => void;
+function CreateAdminForm({
+  onSubmit,
+  onCancel,
+}: {
+  onSubmit: (
+    admin: Omit<AdminUser, "id" | "createdAt" | "updatedAt" | "lastLoginAt">
+  ) => void;
   onCancel: () => void;
 }) {
-  const [formData, setFormData] = useState<Omit<AdminUser, 'id' | 'createdAt' | 'lastModified' | 'lastLogin'>>({
-    name: '',
-    email: '',
-    role: 'ADMIN',
-    department: 'IT',
-    employeeId: '',
-    permissions: [],
-    isActive: true
+  const [formData, setFormData] = useState<
+    Omit<AdminUser, "id" | "createdAt" | "updatedAt" | "lastLoginAt">
+  >({
+    name: "",
+    email: "",
+    password: "",
+    role: "SUPPORT",
+    department: "IT",
+    employeeId: "",
+    permissions: "[]",
+    isActive: true,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -584,7 +720,7 @@ function CreateAdminForm({
         <label className="text-sm font-medium">Name</label>
         <Input
           value={formData.name}
-          onChange={(e) => setFormData({...formData, name: e.target.value})}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
         />
       </div>
@@ -593,26 +729,31 @@ function CreateAdminForm({
         <Input
           type="email"
           value={formData.email}
-          onChange={(e) => setFormData({...formData, email: e.target.value})}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           required
         />
       </div>
       <div>
         <label className="text-sm font-medium">Employee ID</label>
         <Input
-          value={formData.employeeId}
-          onChange={(e) => setFormData({...formData, employeeId: e.target.value})}
-          required
+          value={formData.employeeId || ""}
+          onChange={(e) =>
+            setFormData({ ...formData, employeeId: e.target.value })
+          }
         />
       </div>
       <div>
         <label className="text-sm font-medium">Role</label>
-                 <Select value={formData.role} onValueChange={(value: AdminUser['role']) => setFormData({...formData, role: value})}>
+        <Select
+          value={formData.role}
+          onValueChange={(value: AdminUser["role"]) =>
+            setFormData({ ...formData, role: value })
+          }
+        >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ADMIN">Admin</SelectItem>
             <SelectItem value="SUPPORT">Support</SelectItem>
             <SelectItem value="MODERATOR">Moderator</SelectItem>
           </SelectContent>
@@ -620,7 +761,12 @@ function CreateAdminForm({
       </div>
       <div>
         <label className="text-sm font-medium">Department</label>
-        <Select value={formData.department} onValueChange={(value) => setFormData({...formData, department: value})}>
+        <Select
+          value={formData.department || ""}
+          onValueChange={(value) =>
+            setFormData({ ...formData, department: value })
+          }
+        >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -636,13 +782,17 @@ function CreateAdminForm({
       <div className="flex items-center space-x-2">
         <Switch
           checked={formData.isActive}
-          onCheckedChange={(checked) => setFormData({...formData, isActive: checked})}
+          onCheckedChange={(checked) =>
+            setFormData({ ...formData, isActive: checked })
+          }
         />
         <label className="text-sm font-medium">Active</label>
       </div>
       <div className="flex space-x-2">
         <Button type="submit">Create Admin</Button>
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
       </div>
     </form>
   );

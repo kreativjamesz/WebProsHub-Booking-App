@@ -3,7 +3,7 @@ import { prisma } from "@/lib/database";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config } from "@/lib/config";
-import { AdminUser } from "@/lib/types/admin";
+import { AdminUser } from "@/types/admin";
 
 const ADMIN_JWT_SECRET = config.adminJwt.secret;
 

@@ -7,8 +7,8 @@ import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import {
   fetchBusinesses,
   searchBusinesses,
-} from "@/lib/stores/features/businesses/businessesSlice";
-import { fetchCategories as fetchCategoriesAction } from "@/lib/stores/features/categories/categoriesSlice";
+} from "@/stores/slices/public/public.slice";
+import { fetchPublicCategories as fetchCategoriesAction } from "@/stores/slices/public/public.slice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

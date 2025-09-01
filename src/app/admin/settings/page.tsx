@@ -3,15 +3,14 @@
 import { useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/lib/stores/features/admin/auth/adminAuthSlice";
+import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
 import { removeCookie } from "@/lib/utils/cookies";
 import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/lib/stores/features/admin/adminApi";
+import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
 import {
-  fetchSystemSettings,
-  updateSystemSettings,
-  updateSettingsLocally,
-} from "@/lib/stores/features/admin/adminSystemSlice";
+  useGetSystemSettingsQuery,
+  useUpdateSystemSettingsMutation,
+} from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,7 +22,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
   Settings,
@@ -31,25 +29,30 @@ import {
   Bell,
   Database,
   Users,
-  Building,
-  Calendar,
   LogOut,
   Save,
   Eye,
   EyeOff,
   Lock,
-  Mail,
   Globe,
-  AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AdminSettingsPage() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
 
-  // RTK Query hook for logout
+  // RTK Query hooks
   const [adminLogout] = useAdminLogoutMutation();
+  const [updateSystemSettings] = useUpdateSystemSettingsMutation();
+
+  const {
+    data: systemSettingsData,
+    isLoading: isLoadingSettings,
+    error: settingsError,
+    refetch: refetchSettings,
+  } = useGetSystemSettingsQuery(undefined);
 
   // Settings state
   const [generalSettings, setGeneralSettings] = useState({
@@ -113,17 +116,23 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleSaveSettings = (section: string) => {
-    // Here you would typically save to your backend
-    console.log(`Saving ${section} settings:`, {
-      general: generalSettings,
-      security: securitySettings,
-      notifications: notificationSettings,
-      system: systemSettings,
-    });
-    
-    // Show success message (you can implement a toast notification here)
-    alert(`${section} settings saved successfully!`);
+  const handleSaveSettings = async (section: string) => {
+    try {
+      const settingsToSave = {
+        general: generalSettings,
+        security: securitySettings,
+        notifications: notificationSettings,
+        system: systemSettings,
+      };
+
+      await updateSystemSettings(settingsToSave).unwrap();
+      toast.success(`${section} settings saved successfully!`);
+      refetchSettings();
+    } catch (error: unknown) {
+      const errorMessage = (error as { data?: { error?: string } })?.data?.error || `Failed to save ${section} settings`;
+      toast.error(errorMessage);
+      console.error("Save settings error:", error);
+    }
   };
 
   const handlePasswordChange = () => {
