@@ -48,6 +48,7 @@ import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
 import { useAdminHeader } from "@/lib/hooks";
 import { StatCard } from "@/components/admin/StatCard";
+import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
 
 export default function AdminsPage() {
   const router = useRouter();
@@ -219,26 +220,27 @@ export default function AdminsPage() {
 
   if (adminUser?.role !== "SUPER_ADMIN") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Access Denied
-          </h1>
-          <p className="text-gray-600 mb-4">
-            You don&apos;t have permission to access this page.
-          </p>
-          <Button onClick={() => router.push("/admin")}>
-            Back to Dashboard
-          </Button>
+      <AdminPageContainer withBackground={false}>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center">
+            <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Access Denied
+            </h1>
+            <p className="text-gray-600 mb-4">
+              You don&apos;t have permission to access this page.
+            </p>
+            <Button onClick={() => router.push("/admin")}>
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
-      </div>
+      </AdminPageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AdminPageContainer>
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
@@ -439,8 +441,7 @@ export default function AdminsPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
-
+      
       {/* Edit Admin Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
@@ -539,7 +540,7 @@ export default function AdminsPage() {
           )}
         </DialogContent>
       </Dialog>
-
+      
       {/* Delete Confirmation Dialog */}
       {/* This dialog is not directly managed by isEditDialogOpen, so it needs its own state */}
       {/* For simplicity, we'll keep it as a separate dialog */}
@@ -574,7 +575,7 @@ export default function AdminsPage() {
           </DialogContent>
         </Dialog>
       )}
-
+      
       {/* Create Admin Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-md">
@@ -587,7 +588,7 @@ export default function AdminsPage() {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageContainer>
   );
 }
 

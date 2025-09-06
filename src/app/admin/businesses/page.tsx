@@ -56,6 +56,7 @@ import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
 import { useAdminHeader } from "@/lib/hooks";
 import { StatCard } from "@/components/admin/StatCard";
+import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
 
 export default function AdminBusinessesPage() {
   const { adminUser } = useAppSelector((state) => state.adminAuth);
@@ -183,193 +184,188 @@ export default function AdminBusinessesPage() {
     businesses?.filter((b: Business) => b.ownerId).length || 0;
 
   return (
-    <div className="p-6 space-y-6 min-h-screen bg-background">
+    <AdminPageContainer maxWidthClassName="max-w-screen-2xl">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total Businesses"
+          value={totalBusinesses}
+          icon={<Building className="h-6 w-6 text-blue-600" />}
+        />
 
-      <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Businesses"
-            value={totalBusinesses}
-            icon={<Building className="h-6 w-6 text-blue-600" />}
-          />
+        <StatCard
+          title="Active Businesses"
+          value={activeBusinesses}
+          icon={<CheckCircle className="h-6 w-6 text-green-600" />}
+        />
 
-          <StatCard
-            title="Active Businesses"
-            value={activeBusinesses}
-            icon={<CheckCircle className="h-6 w-6 text-green-600" />}
-          />
+        <StatCard
+          title="Pending Approval"
+          value={pendingBusinesses}
+          icon={<AlertTriangle className="h-6 w-6 text-amber-600" />}
+        />
 
-          <StatCard
-            title="Pending Approval"
-            value={pendingBusinesses}
-            icon={<AlertTriangle className="h-6 w-6 text-amber-600" />}
-          />
+        <StatCard
+          title="Assigned Owners"
+          value={assignedBusinesses}
+          icon={<Users className="h-6 w-6 text-purple-600" />}
+        />
+      </div>
 
-          <StatCard
-            title="Assigned Owners"
-            value={assignedBusinesses}
-            icon={<Users className="h-6 w-6 text-purple-600" />}
-          />
-        </div>
-
-        {/* Filters and Search */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Filter className="h-5 w-5" />
-              <span>Filters & Search</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <Label htmlFor="search" className="text-sm font-medium">
-                  Search Businesses
-                </Label>
-                <div className="mt-1">
-                  <SearchInput
-                    placeholder="Search by name, description, or city..."
-                    value={searchTerm}
-                    onChange={setSearchTerm}
-                    delay={500}
-                  />
-                </div>
-              </div>
-              <div className="sm:w-48">
-                <Label htmlFor="status-filter" className="text-sm font-medium">
-                  Filter by Status
-                </Label>
-                <select
-                  id="status-filter"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+      {/* Filters and Search */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Filter className="h-5 w-5" />
+            <span>Filters & Search</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Label htmlFor="search" className="text-sm font-medium">
+                Search Businesses
+              </Label>
+              <div className="mt-1">
+                <SearchInput
+                  placeholder="Search by name, description, or city..."
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  delay={500}
+                />
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="sm:w-48">
+              <Label htmlFor="status-filter" className="text-sm font-medium">
+                Filter by Status
+              </Label>
+              <select
+                id="status-filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Businesses Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Building className="h-5 w-5" />
-              <span>Businesses</span>
-            </CardTitle>
-            <CardDescription>
-              Manage business listings, approvals, and ownership
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingBusinesses ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table className="businesses-table">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Business</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredBusinesses.map((business: Business) => (
-                      <TableRow key={business.id}>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <p className="font-medium">{business.name}</p>
-                            <p className="text-sm text-muted-foreground line-clamp-1">
-                              {business.description}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            <span>
-                              {business.city}, {business.state}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                            <Users className="h-3 w-3" />
-                            <span>{business.ownerId || "Unassigned"}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              business.isActive ? "default" : "secondary"
-                            }
-                            className={
-                              business.isActive
-                                ? "bg-green-100 text-green-800"
-                                : ""
+      {/* Businesses Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Building className="h-5 w-5" />
+            <span>Businesses</span>
+          </CardTitle>
+          <CardDescription>
+            Manage business listings, approvals, and ownership
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingBusinesses ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table className="businesses-table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Business</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBusinesses.map((business: Business) => (
+                    <TableRow key={business.id}>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-medium">{business.name}</p>
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {business.description}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          <span>
+                            {business.city}, {business.state}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                          <Users className="h-3 w-3" />
+                          <span>{business.ownerId || "Unassigned"}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={business.isActive ? "default" : "secondary"}
+                          className={
+                            business.isActive
+                              ? "bg-green-100 text-green-800"
+                              : ""
+                          }
+                        >
+                          {business.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedBusiness(business)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              handleToggleBusinessStatus(business.id)
                             }
                           >
-                            {business.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedBusiness(business)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                handleToggleBusinessStatus(business.id)
-                              }
-                            >
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteBusiness(business.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteBusiness(business.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
 
-                {/* Pagination */}
-                <div className="mt-6">
-                  <Pagination
-                    currentPage={pagination.currentPage}
-                    totalPages={pagination.totalPages}
-                    totalItems={pagination.totalBusinesses}
-                    itemsPerPage={pagination.businessesPerPage}
-                    onPageChange={setCurrentPage}
-                  />
-                </div>
+              {/* Pagination */}
+              <div className="mt-6">
+                <Pagination
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalBusinesses}
+                  itemsPerPage={pagination.businessesPerPage}
+                  onPageChange={setCurrentPage}
+                />
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Business Details Dialog */}
       <Dialog
@@ -471,6 +467,6 @@ export default function AdminBusinessesPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageContainer>
   );
 }
