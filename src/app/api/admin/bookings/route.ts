@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "all";
     const date = searchParams.get("date") || "all";
-    const limit = 20;
+    const limit = 12;
     const skip = (page - 1) * limit;
 
     // Build where clause

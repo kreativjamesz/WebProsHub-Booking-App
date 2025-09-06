@@ -1,10 +1,7 @@
 "use client";
 
-import { useAppSelector, useAppDispatch } from "@/lib/hooks";
+import { useAppSelector } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
-import { removeCookie } from "@/lib/utils/cookies";
-import { adminStorage } from "@/lib/utils/storage";
 import {
   useGetUsersQuery,
   useGetBusinessesQuery,
@@ -20,7 +17,6 @@ import {
   Settings,
   Shield,
   Star,
-  LogOut,
   Calendar,
   Activity,
   ArrowRight,
@@ -28,20 +24,20 @@ import {
   Building2,
   BarChart3,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { StatCard } from "@/components/admin/StatCard";
 import { ChartCard } from "@/components/admin/ChartCard";
-import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
+import { useAdminHeader } from "@/lib/hooks";
+
 import { type Business } from "@/types/business";
 import { type User } from "@/types/user";
 
 export default function AdminDashboard() {
-  const dispatch = useAppDispatch();
   const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
 
-  // RTK Query hooks
-  const [adminLogout] = useAdminLogoutMutation();
+  useAdminHeader("Admin Dashboard", [{ label: "Dashboard" }]);
 
   const {
     data: usersData,
@@ -73,22 +69,6 @@ export default function AdminDashboard() {
   const users = usersData?.users || [];
   const allBusinesses = businessesData?.businesses || [];
 
-  const handleLogout = async () => {
-    try {
-      await adminLogout().unwrap();
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    }
-  };
-
   // Calculate statistics
   const totalUsers = users.length;
   const totalBusinesses = allBusinesses.length;
@@ -102,10 +82,18 @@ export default function AdminDashboard() {
     (user: User) => user.role === "BUSINESS_OWNER"
   ).length;
 
+  if (isLoadingUsers || isLoadingBusinesses || isLoadingStats) {
+    return <div className="min-h-screen bg-background">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    </div>;
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Alert className="border-destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
@@ -121,47 +109,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Shield className="h-8 w-8 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
-                  Admin Dashboard
-                </h1>
-                <p className="text-muted-foreground">
-                  Welcome back, {adminUser?.name}. Here&apos;s your system
-                  overview.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Welcome back,</p>
-                <p className="font-semibold">{adminUser?.name}</p>
-                <Badge variant="outline" className="mt-1">
-                  {adminUser?.role.replace("_", " ")}
-                </Badge>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="text-destructive hover:text-destructive"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Quick Actions */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
@@ -242,46 +190,24 @@ export default function AdminDashboard() {
               title="Total Users"
               value={totalUsers}
               icon={<Users className="h-5 w-5" />}
-              iconBgColor="bg-blue-100"
-              iconColor="text-blue-600"
-              description="Registered users"
-              trend={{ value: 12, isPositive: true }}
             />
 
             <StatCard
               title="Total Businesses"
               value={totalBusinesses}
               icon={<Building className="h-5 w-5" />}
-              iconBgColor="bg-green-100"
-              iconColor="text-green-600"
-              description="Registered businesses"
-              trend={{ value: 8, isPositive: true }}
             />
 
             <StatCard
               title="Active Businesses"
               value={activeBusinesses}
               icon={<Building2 className="h-5 w-5" />}
-              iconBgColor="bg-emerald-100"
-              iconColor="text-emerald-600"
-              description="Currently active"
-              trend={{
-                value:
-                  totalBusinesses > 0
-                    ? Math.round((activeBusinesses / totalBusinesses) * 100)
-                    : 0,
-                isPositive: true,
-              }}
             />
 
             <StatCard
               title="Business Owners"
               value={businessOwners}
               icon={<UserCheck className="h-5 w-5" />}
-              iconBgColor="bg-purple-100"
-              iconColor="text-purple-600"
-              description="Business accounts"
-              trend={{ value: 15, isPositive: true }}
             />
           </div>
         </div>
@@ -352,27 +278,29 @@ export default function AdminDashboard() {
           >
             <div className="space-y-3">
               {allBusinesses && allBusinesses.length > 0 ? (
-                allBusinesses.slice(0, 5).map((business: Business, index: number) => (
-                  <div
-                    key={`${index}-${business.id}`}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {index + 1}.
-                      </span>
-                      <span className="text-sm font-medium truncate max-w-24">
-                        {business.name}
-                      </span>
+                allBusinesses
+                  .slice(0, 5)
+                  .map((business: Business, index: number) => (
+                    <div
+                      key={`${index}-${business.id}`}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {index + 1}.
+                        </span>
+                        <span className="text-sm font-medium truncate max-w-24">
+                          {business.name}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{business.city}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {business.isActive ? "Active" : "Pending"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{business.city}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {business.isActive ? "Active" : "Pending"}
-                      </p>
-                    </div>
-                  </div>
-                ))
+                  ))
               ) : (
                 <div className="text-center text-sm text-muted-foreground">
                   No businesses found
@@ -395,27 +323,29 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {allBusinesses && allBusinesses.length > 0 ? (
-                  allBusinesses.slice(0, 5).map((business: Business, index: number) => (
-                    <div
-                      key={`${index}-${business.id}`}
-                      className="flex items-start space-x-3"
-                    >
+                  allBusinesses
+                    .slice(0, 5)
+                    .map((business: Business, index: number) => (
                       <div
-                        className={`w-2 h-2 rounded-full mt-2 ${
-                          business.isActive ? "bg-green-500" : "bg-yellow-500"
-                        }`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {business.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {business.city} •{" "}
-                          {business.isActive ? "Active" : "Pending"}
-                        </p>
+                        key={`${index}-${business.id}`}
+                        className="flex items-start space-x-3"
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full mt-2 ${
+                            business.isActive ? "bg-green-500" : "bg-yellow-500"
+                          }`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {business.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {business.city} •{" "}
+                            {business.isActive ? "Active" : "Pending"}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                 ) : (
                   <div className="text-center text-sm text-muted-foreground py-8">
                     No recent activity

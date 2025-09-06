@@ -12,6 +12,7 @@ import adminUsersReducer from './slices/private/users/adminUsers.slice';
 import adminBusinessesReducer from './slices/private/businesses/adminBusinesses.slice';
 import adminBookingsReducer from './slices/private/bookings/adminBookings.slice';
 import adminSystemReducer from './slices/private/system/adminSystem.slice';
+import adminHeaderReducer from './slices/private/system/adminHeader.slice';
 
 
 // Role-based slices
@@ -78,6 +79,7 @@ export const store = configureStore({
         adminBusinesses: adminBusinessesReducer, // Admin business management
         adminBookings: adminBookingsReducer,  // Admin booking management
         adminSystem: adminSystemReducer,      // Admin system management
+        adminHeader: adminHeaderReducer,      // Admin header state
 
         
         // Role-based slices (user-specific features)

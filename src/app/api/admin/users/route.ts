@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const role = searchParams.get("role") || "all";
     const status = searchParams.get("status") || "all";
-    const limit = 20;
+    const limit = 12;
     const offset = (page - 1) * limit;
 
     // Build where clause

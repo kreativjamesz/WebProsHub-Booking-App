@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "all";
     const category = searchParams.get("category") || "all";
     const city = searchParams.get("city") || "all";
-    const limit = 20;
+    const limit = 12;
     const offset = (page - 1) * limit;
 
     // Build where clause

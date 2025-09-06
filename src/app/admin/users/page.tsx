@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAppSelector, useAppDispatch } from "@/lib/hooks";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import {
   useGetUsersQuery,
   useUpdateUserRoleMutation,
   useDeleteUserMutation,
 } from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -27,23 +26,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { Users, UserCheck, Building2, LogOut } from "lucide-react";
+import { Users, UserCheck, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types/user";
-import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
-import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
-import { removeCookie } from "@/lib/utils/cookies";
-import { adminStorage } from "@/lib/utils/storage";
-import { useRouter } from "next/navigation";
 import { getCookie } from "@/lib/utils/cookies";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
+import { useAdminHeader } from "@/lib/hooks";
+import { StatCard } from "@/components/admin/StatCard";
 
 export default function AdminUsersPage() {
-  const dispatch = useAppDispatch();
-  const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
-
+  const dispatch = useAppDispatch();
+  useAdminHeader("User Management", [
+    { label: "Dashboard", href: "/admin" },
+    { label: "Users" },
+  ]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -54,7 +52,6 @@ export default function AdminUsersPage() {
   console.log("Admin Token:", adminToken ? "Exists" : "Missing");
 
   // RTK Query hooks
-  const [adminLogout] = useAdminLogoutMutation();
   const [updateUserRole] = useUpdateUserRoleMutation();
   const [deleteUser] = useDeleteUserMutation();
 
@@ -76,24 +73,7 @@ export default function AdminUsersPage() {
     currentPage: 1,
     totalPages: 1,
     totalUsers: 0,
-    usersPerPage: 20,
-  };
-
-  // Handle logout
-  const handleLogout = async () => {
-    try {
-      await adminLogout().unwrap();
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    }
+    usersPerPage: 12,
   };
 
   // Handle role update
@@ -160,206 +140,176 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">User Management</h1>
-        <div className="flex items-center space-x-4">
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Welcome back,</p>
-            <p className="font-semibold">{adminUser?.name}</p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="text-destructive hover:text-destructive"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+    <div className="p-6 space-y-6 min-h-screen bg-background">
+
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Users"
+            value={totalUsers}
+            icon={<Users className="h-4 w-4 text-muted-foreground" />}
+          />
+
+          <StatCard
+            title="Customers"
+            value={customers}
+            icon={<UserCheck className="h-4 w-4 text-muted-foreground" />}
+          />
+
+          <StatCard
+            title="Business Owners"
+            value={businessOwners}
+            icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
+          />
+
+          <StatCard
+            title="Active Users"
+            value={activeUsers}
+            icon={<UserCheck className="h-4 w-4 text-muted-foreground" />}
+          />
         </div>
-      </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Filters and Search */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Filters & Search</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Customers</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{customers}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Business Owners
-            </CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{businessOwners}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeUsers}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <SearchInput
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={setSearchTerm}
-                delay={500}
-              />
-            </div>
-
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="CUSTOMER">Customer</SelectItem>
-                <SelectItem value="BUSINESS_OWNER">Business Owner</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button onClick={() => dispatch(refetchUsers)} variant="outline">
-              Refresh
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingUsers ? (
-            <div className="text-center py-8">Loading users...</div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users?.map((user: User) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            user.role === "BUSINESS_OWNER"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {user.role === "BUSINESS_OWNER"
-                            ? "Business Owner"
-                            : "Customer"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Select
-                            value={user.role}
-                            onValueChange={(newRole) =>
-                              handleRoleUpdate(user.id, newRole)
-                            }
-                            disabled={isLoadingUsers}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="CUSTOMER">Customer</SelectItem>
-                              <SelectItem value="BUSINESS_OWNER">
-                                Business Owner
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user.id)}
-                            disabled={isLoadingUsers}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Pagination */}
-              <div className="mt-6">
-                <Pagination
-                  currentPage={pagination.currentPage}
-                  totalPages={pagination.totalPages}
-                  totalItems={pagination.totalUsers}
-                  itemsPerPage={pagination.usersPerPage}
-                  onPageChange={setCurrentPage}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <SearchInput
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  delay={500}
                 />
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Filter by role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="CUSTOMER">Customer</SelectItem>
+                  <SelectItem value="BUSINESS_OWNER">Business Owner</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button onClick={() => dispatch(refetchUsers)} variant="outline">
+                Refresh
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Users Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Users</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingUsers ? (
+              <div className="text-center py-8">Loading users...</div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users?.map((user: User) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">
+                          {user.name}
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              user.role === "BUSINESS_OWNER"
+                                ? "default"
+                                : "secondary"
+                            }
+                          >
+                            {user.role === "BUSINESS_OWNER"
+                              ? "Business Owner"
+                              : "Customer"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(user.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Select
+                              value={user.role}
+                              onValueChange={(newRole) =>
+                                handleRoleUpdate(user.id, newRole)
+                              }
+                              disabled={isLoadingUsers}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="CUSTOMER">
+                                  Customer
+                                </SelectItem>
+                                <SelectItem value="BUSINESS_OWNER">
+                                  Business Owner
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteUser(user.id)}
+                              disabled={isLoadingUsers}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                {/* Pagination */}
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={pagination.currentPage}
+                    totalPages={pagination.totalPages}
+                    totalItems={pagination.totalUsers}
+                    itemsPerPage={pagination.usersPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

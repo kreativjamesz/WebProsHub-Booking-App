@@ -1,12 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAppSelector, useAppDispatch } from "@/lib/hooks";
+import { useAppSelector } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
-import { removeCookie } from "@/lib/utils/cookies";
-import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
 import {
   useGetSystemSettingsQuery,
   useUpdateSystemSettingsMutation,
@@ -29,7 +25,6 @@ import {
   Bell,
   Database,
   Users,
-  LogOut,
   Save,
   Eye,
   EyeOff,
@@ -37,14 +32,17 @@ import {
   Globe,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAdminHeader } from "@/lib/hooks";
 
 export default function AdminSettingsPage() {
-  const dispatch = useAppDispatch();
   const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
+  useAdminHeader("System Settings", [
+    { label: "Dashboard", href: "/admin" },
+    { label: "Settings" },
+  ]);
 
   // RTK Query hooks
-  const [adminLogout] = useAdminLogoutMutation();
   const [updateSystemSettings] = useUpdateSystemSettingsMutation();
 
   const {
@@ -100,22 +98,6 @@ export default function AdminSettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleLogout = async () => {
-    try {
-      await adminLogout().unwrap();
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    }
-  };
-
   const handleSaveSettings = async (section: string) => {
     try {
       const settingsToSave = {
@@ -129,7 +111,9 @@ export default function AdminSettingsPage() {
       toast.success(`${section} settings saved successfully!`);
       refetchSettings();
     } catch (error: unknown) {
-      const errorMessage = (error as { data?: { error?: string } })?.data?.error || `Failed to save ${section} settings`;
+      const errorMessage =
+        (error as { data?: { error?: string } })?.data?.error ||
+        `Failed to save ${section} settings`;
       toast.error(errorMessage);
       console.error("Save settings error:", error);
     }
@@ -140,16 +124,16 @@ export default function AdminSettingsPage() {
       alert("New passwords don't match!");
       return;
     }
-    
+
     if (newPassword.length < 8) {
       alert("Password must be at least 8 characters long!");
       return;
     }
-    
+
     // Here you would typically update the password via API
     console.log("Changing password...");
     alert("Password changed successfully!");
-    
+
     // Clear form
     setCurrentPassword("");
     setNewPassword("");
@@ -158,46 +142,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Settings className="h-8 w-8 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
-                  System Settings
-                </h1>
-                <p className="text-muted-foreground">
-                  Configure system preferences and security settings
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Welcome back,</p>
-                <p className="font-semibold">{adminUser?.name}</p>
-                <Badge variant="outline" className="mt-1">
-                  {adminUser?.role.replace("_", " ")}
-                </Badge>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="text-destructive hover:text-destructive"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* General Settings */}
           <Card>
@@ -217,7 +162,12 @@ export default function AdminSettingsPage() {
                   <Input
                     id="siteName"
                     value={generalSettings.siteName}
-                    onChange={(e) => setGeneralSettings(prev => ({ ...prev, siteName: e.target.value }))}
+                    onChange={(e) =>
+                      setGeneralSettings((prev) => ({
+                        ...prev,
+                        siteName: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -226,17 +176,27 @@ export default function AdminSettingsPage() {
                     id="contactEmail"
                     type="email"
                     value={generalSettings.contactEmail}
-                    onChange={(e) => setGeneralSettings(prev => ({ ...prev, contactEmail: e.target.value }))}
+                    onChange={(e) =>
+                      setGeneralSettings((prev) => ({
+                        ...prev,
+                        contactEmail: e.target.value,
+                      }))
+                    }
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="siteDescription">Site Description</Label>
                 <Input
                   id="siteDescription"
                   value={generalSettings.siteDescription}
-                  onChange={(e) => setGeneralSettings(prev => ({ ...prev, siteDescription: e.target.value }))}
+                  onChange={(e) =>
+                    setGeneralSettings((prev) => ({
+                      ...prev,
+                      siteDescription: e.target.value,
+                    }))
+                  }
                 />
               </div>
 
@@ -246,7 +206,12 @@ export default function AdminSettingsPage() {
                   <Input
                     id="timezone"
                     value={generalSettings.timezone}
-                    onChange={(e) => setGeneralSettings(prev => ({ ...prev, timezone: e.target.value }))}
+                    onChange={(e) =>
+                      setGeneralSettings((prev) => ({
+                        ...prev,
+                        timezone: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -254,12 +219,17 @@ export default function AdminSettingsPage() {
                   <Input
                     id="dateFormat"
                     value={generalSettings.dateFormat}
-                    onChange={(e) => setGeneralSettings(prev => ({ ...prev, dateFormat: e.target.value }))}
+                    onChange={(e) =>
+                      setGeneralSettings((prev) => ({
+                        ...prev,
+                        dateFormat: e.target.value,
+                      }))
+                    }
                   />
                 </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={() => handleSaveSettings("General")}
                 className="w-full"
               >
@@ -290,7 +260,12 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch
                   checked={securitySettings.twoFactorAuth}
-                  onCheckedChange={(checked) => setSecuritySettings(prev => ({ ...prev, twoFactorAuth: checked }))}
+                  onCheckedChange={(checked) =>
+                    setSecuritySettings((prev) => ({
+                      ...prev,
+                      twoFactorAuth: checked,
+                    }))
+                  }
                 />
               </div>
 
@@ -303,18 +278,30 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch
                   checked={securitySettings.auditLogging}
-                  onCheckedChange={(checked) => setSecuritySettings(prev => ({ ...prev, auditLogging: checked }))}
+                  onCheckedChange={(checked) =>
+                    setSecuritySettings((prev) => ({
+                      ...prev,
+                      auditLogging: checked,
+                    }))
+                  }
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
+                  <Label htmlFor="sessionTimeout">
+                    Session Timeout (minutes)
+                  </Label>
                   <Input
                     id="sessionTimeout"
                     type="number"
                     value={securitySettings.sessionTimeout}
-                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, sessionTimeout: parseInt(e.target.value) }))}
+                    onChange={(e) =>
+                      setSecuritySettings((prev) => ({
+                        ...prev,
+                        sessionTimeout: parseInt(e.target.value),
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -323,12 +310,17 @@ export default function AdminSettingsPage() {
                     id="maxLoginAttempts"
                     type="number"
                     value={securitySettings.maxLoginAttempts}
-                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, maxLoginAttempts: parseInt(e.target.value) }))}
+                    onChange={(e) =>
+                      setSecuritySettings((prev) => ({
+                        ...prev,
+                        maxLoginAttempts: parseInt(e.target.value),
+                      }))
+                    }
                   />
                 </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={() => handleSaveSettings("Security")}
                 className="w-full"
               >
@@ -359,7 +351,12 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch
                   checked={notificationSettings.emailNotifications}
-                  onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, emailNotifications: checked }))}
+                  onCheckedChange={(checked) =>
+                    setNotificationSettings((prev) => ({
+                      ...prev,
+                      emailNotifications: checked,
+                    }))
+                  }
                 />
               </div>
 
@@ -372,7 +369,12 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch
                   checked={notificationSettings.pushNotifications}
-                  onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, pushNotifications: checked }))}
+                  onCheckedChange={(checked) =>
+                    setNotificationSettings((prev) => ({
+                      ...prev,
+                      pushNotifications: checked,
+                    }))
+                  }
                 />
               </div>
 
@@ -385,7 +387,12 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch
                   checked={notificationSettings.bookingConfirmations}
-                  onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, bookingConfirmations: checked }))}
+                  onCheckedChange={(checked) =>
+                    setNotificationSettings((prev) => ({
+                      ...prev,
+                      bookingConfirmations: checked,
+                    }))
+                  }
                 />
               </div>
 
@@ -398,11 +405,16 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch
                   checked={notificationSettings.systemAlerts}
-                  onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, systemAlerts: checked }))}
+                  onCheckedChange={(checked) =>
+                    setNotificationSettings((prev) => ({
+                      ...prev,
+                      systemAlerts: checked,
+                    }))
+                  }
                 />
               </div>
 
-              <Button 
+              <Button
                 onClick={() => handleSaveSettings("Notification")}
                 className="w-full"
               >
@@ -419,9 +431,7 @@ export default function AdminSettingsPage() {
                 <Database className="h-5 w-5" />
                 <span>System Settings</span>
               </CardTitle>
-              <CardDescription>
-                Advanced system configuration
-              </CardDescription>
+              <CardDescription>Advanced system configuration</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
@@ -433,7 +443,12 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch
                   checked={systemSettings.maintenanceMode}
-                  onCheckedChange={(checked) => setSystemSettings(prev => ({ ...prev, maintenanceMode: checked }))}
+                  onCheckedChange={(checked) =>
+                    setSystemSettings((prev) => ({
+                      ...prev,
+                      maintenanceMode: checked,
+                    }))
+                  }
                 />
               </div>
 
@@ -446,7 +461,12 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch
                   checked={systemSettings.autoBackup}
-                  onCheckedChange={(checked) => setSystemSettings(prev => ({ ...prev, autoBackup: checked }))}
+                  onCheckedChange={(checked) =>
+                    setSystemSettings((prev) => ({
+                      ...prev,
+                      autoBackup: checked,
+                    }))
+                  }
                 />
               </div>
 
@@ -457,21 +477,33 @@ export default function AdminSettingsPage() {
                     id="maxFileSize"
                     type="number"
                     value={systemSettings.maxFileSize}
-                    onChange={(e) => setSystemSettings(prev => ({ ...prev, maxFileSize: parseInt(e.target.value) }))}
+                    onChange={(e) =>
+                      setSystemSettings((prev) => ({
+                        ...prev,
+                        maxFileSize: parseInt(e.target.value),
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxRequestsPerMinute">Rate Limit (req/min)</Label>
+                  <Label htmlFor="maxRequestsPerMinute">
+                    Rate Limit (req/min)
+                  </Label>
                   <Input
                     id="maxRequestsPerMinute"
                     type="number"
                     value={systemSettings.maxRequestsPerMinute}
-                    onChange={(e) => setSystemSettings(prev => ({ ...prev, maxRequestsPerMinute: parseInt(e.target.value) }))}
+                    onChange={(e) =>
+                      setSystemSettings((prev) => ({
+                        ...prev,
+                        maxRequestsPerMinute: parseInt(e.target.value),
+                      }))
+                    }
                   />
                 </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={() => handleSaveSettings("System")}
                 className="w-full"
               >
@@ -544,7 +576,7 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <Button 
+            <Button
               onClick={handlePasswordChange}
               className="w-full md:w-auto"
               disabled={!currentPassword || !newPassword || !confirmPassword}

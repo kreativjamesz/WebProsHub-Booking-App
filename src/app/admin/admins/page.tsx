@@ -1,18 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAppSelector, useAppDispatch } from "@/lib/hooks";
+import { useAppSelector } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
-import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
+
 import {
   useGetAdminsQuery,
   useCreateAdminMutation,
   useUpdateAdminMutation,
   useDeleteAdminMutation,
 } from "@/stores/slices/private/admin.api";
-import { removeCookie } from "@/lib/utils/cookies";
-import { adminStorage } from "@/lib/utils/storage";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +34,6 @@ import {
   Shield,
   UserPlus,
   Edit,
-  LogOut,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -49,12 +46,16 @@ import { toast } from "sonner";
 import { type AdminUser } from "@/stores/slices/private/admin.types";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
+import { useAdminHeader } from "@/lib/hooks";
+import { StatCard } from "@/components/admin/StatCard";
 
 export default function AdminsPage() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
-  const [adminLogout] = useAdminLogoutMutation();
+  useAdminHeader("Admin Management", [
+    { label: "Dashboard", href: "/admin" },
+    { label: "Admins" },
+  ]);
 
   // Check admin token
   const adminToken = getCookie("adminToken");
@@ -99,28 +100,12 @@ export default function AdminsPage() {
     currentPage: 1,
     totalPages: 1,
     totalAdmins: 0,
-    adminsPerPage: 20,
+    adminsPerPage: 12,
   };
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
-
-  const handleLogout = async () => {
-    try {
-      await adminLogout().unwrap();
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    }
-  };
 
   const handleCreateAdmin = async (
     adminData: Omit<AdminUser, "id" | "createdAt" | "updatedAt" | "lastLoginAt">
@@ -253,123 +238,34 @@ export default function AdminsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Shield className="h-8 w-8 text-purple-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
-                  Admin Management
-                </h1>
-                <p className="text-muted-foreground">
-                  Manage system administrators and their permissions
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Welcome back,</p>
-                <p className="font-semibold">{adminUser?.name}</p>
-                <Badge variant="outline" className="mt-1">
-                  {adminUser?.role.replace("_", " ")}
-                </Badge>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="text-destructive hover:text-destructive"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Total Admins
-                  </p>
-                  <p className="text-2xl font-bold">{totalAdmins}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <UserCheck className="h-6 w-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Active Admins
-                  </p>
-                  <p className="text-2xl font-bold">{activeAdmins}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Crown className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Super Admins
-                  </p>
-                  <p className="text-2xl font-bold">{superAdmins}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Shield className="h-6 w-6 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Moderator Admins
-                  </p>
-                  <p className="text-2xl font-bold">{moderatorAdmins}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Shield className="h-6 w-6 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Support Admins
-                  </p>
-                  <p className="text-2xl font-bold">{supportAdmins}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Total Admins"
+            value={totalAdmins}
+            icon={<Users className="h-6 w-6 text-blue-600" />}
+          />
+          <StatCard
+            title="Active Admins"
+            value={activeAdmins}
+            icon={<UserCheck className="h-6 w-6 text-green-600" />}
+          />
+          <StatCard
+            title="Super Admins"
+            value={superAdmins}
+            icon={<Crown className="h-6 w-6 text-purple-600" />}
+          />
+          <StatCard
+            title="Moderator Admins"
+            value={moderatorAdmins}
+            icon={<Shield className="h-6 w-6 text-orange-600" />}
+          />
+          <StatCard
+            title="Support Admins"
+            value={supportAdmins}
+            icon={<Shield className="h-6 w-6 text-orange-600" />}
+          />
         </div>
 
         {/* Error Alert */}
@@ -529,7 +425,7 @@ export default function AdminsPage() {
                   )}
                 </tbody>
               </table>
-              
+
               {/* Pagination */}
               <div className="mt-6">
                 <Pagination

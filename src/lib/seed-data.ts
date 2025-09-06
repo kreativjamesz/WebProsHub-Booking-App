@@ -1,9 +1,6 @@
 import { faker } from "@faker-js/faker";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, AdminRole, UserRole, BookingStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { AdminRole } from "@/stores/slices/private/admin.types";
-import { UserRole } from "@/stores/slices/auth/auth.types";
-import { BookingStatus } from "@/stores/slices/private/bookings/adminBookings.types";
 
 const prisma = new PrismaClient();
 

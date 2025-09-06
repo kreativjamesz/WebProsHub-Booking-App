@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
-import { removeCookie } from "@/lib/utils/cookies";
-import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
+import { useState } from "react";
+import { useAppSelector } from "@/lib/hooks";
+
 import {
   useGetBookingsQuery,
   useUpdateBookingStatusMutation,
   useDeleteBookingMutation,
 } from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -42,20 +44,25 @@ import {
   Clock,
   User,
   Building,
-  LogOut,
   Eye,
   XCircle,
+  CheckCircle,
+  Filter,
 } from "lucide-react";
 import { getCookie } from "@/lib/utils/cookies";
 import { toast } from "sonner";
 import { Booking } from "@/types/booking";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
+import { useAdminHeader } from "@/lib/hooks";
+import { StatCard } from "@/components/admin/StatCard";
 
 export default function AdminBookingsPage() {
-  const dispatch = useAppDispatch();
-  const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
+  useAdminHeader("Booking Management", [
+    { label: "Dashboard", href: "/admin" },
+    { label: "Bookings" },
+  ]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -71,7 +78,6 @@ export default function AdminBookingsPage() {
   console.log("Admin Token:", adminToken ? "Exists" : "Missing");
 
   // RTK Query hooks
-  const [adminLogout] = useAdminLogoutMutation();
   const [updateBookingStatus] = useUpdateBookingStatusMutation();
   const [deleteBooking] = useDeleteBookingMutation();
 
@@ -93,24 +99,20 @@ export default function AdminBookingsPage() {
     currentPage: 1,
     totalPages: 1,
     totalBookings: 0,
-    bookingsPerPage: 20,
+    bookingsPerPage: 12,
   };
 
-  const handleLogout = async () => {
-    try {
-      await adminLogout().unwrap();
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    }
-  };
+  // Stats (counts derived from current page data; total from pagination)
+  const totalBookingsCount = pagination.totalBookings;
+  const pendingCount = bookings.filter(
+    (b: Booking) => b.status === "PENDING"
+  ).length;
+  const confirmedCount = bookings.filter(
+    (b: Booking) => b.status === "CONFIRMED"
+  ).length;
+  const completedCount = bookings.filter(
+    (b: Booking) => b.status === "COMPLETED"
+  ).length;
 
   const handleStatusUpdate = async (bookingId: string, newStatus: string) => {
     try {
@@ -159,50 +161,39 @@ export default function AdminBookingsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Calendar className="h-8 w-8 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
-                  Booking Management
-                </h1>
-                <p className="text-muted-foreground">
-                  Manage and monitor all system bookings
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Welcome back,</p>
-                <p className="font-semibold">{adminUser?.name}</p>
-                <Badge variant="outline" className="mt-1">
-                  {adminUser?.role.replace("_", " ")}
-                </Badge>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="text-destructive hover:text-destructive"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
+      {/* Header now global in layout */}
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            title="Total Bookings"
+            value={totalBookingsCount}
+            icon={<Calendar className="h-5 w-5 text-blue-600" />}
+          />
+          <StatCard
+            title="Pending"
+            value={pendingCount}
+            icon={<Clock className="h-5 w-5 text-yellow-600" />}
+          />
+          <StatCard
+            title="Confirmed"
+            value={confirmedCount}
+            icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+          />
+          <StatCard
+            title="Completed"
+            value={completedCount}
+            icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+          />
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters and Search */}
-        <Card>
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Filters & Search</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <Filter className="h-5 w-5" />
+              <span>Filters & Search</span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row gap-4">
@@ -228,10 +219,7 @@ export default function AdminBookingsPage() {
                 </SelectContent>
               </Select>
 
-              <Button
-                onClick={() => dispatch(refetchBookings)}
-                variant="outline"
-              >
+              <Button onClick={() => refetchBookings()} variant="outline">
                 Refresh
               </Button>
               <Button
@@ -275,9 +263,15 @@ export default function AdminBookingsPage() {
         </Card>
 
         {/* Bookings Table */}
-        <Card>
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Bookings</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5" />
+              <span>Bookings</span>
+            </CardTitle>
+            <CardDescription>
+              Manage and monitor all system bookings
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoadingBookings ? (

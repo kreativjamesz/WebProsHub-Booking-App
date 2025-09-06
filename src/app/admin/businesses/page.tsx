@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAppSelector, useAppDispatch } from "@/lib/hooks";
-import { useRouter } from "next/navigation";
-import { clearAdminUser } from "@/stores/slices/private/auth/adminAuth.slice";
-import { removeCookie } from "@/lib/utils/cookies";
-import { adminStorage } from "@/lib/utils/storage";
-import { useAdminLogoutMutation } from "@/stores/slices/private/auth/adminAuth.api";
+import { useState } from "react";
+import { useAppSelector } from "@/lib/hooks";
+
 import {
   useGetBusinessesQuery,
   useDeleteBusinessMutation,
@@ -39,7 +35,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Building,
   MapPin,
@@ -51,7 +46,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Filter,
-  LogOut,
   Phone,
   Mail,
   Globe,
@@ -60,11 +54,15 @@ import { Business } from "@/types";
 import { toast } from "sonner";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
+import { useAdminHeader } from "@/lib/hooks";
+import { StatCard } from "@/components/admin/StatCard";
 
 export default function AdminBusinessesPage() {
-  const dispatch = useAppDispatch();
-  const router = useRouter();
   const { adminUser } = useAppSelector((state) => state.adminAuth);
+  useAdminHeader("Businesses Management", [
+    { label: "Dashboard", href: "/admin" },
+    { label: "Businesses" },
+  ]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
@@ -78,7 +76,6 @@ export default function AdminBusinessesPage() {
   const [ownerEmail, setOwnerEmail] = useState("");
 
   // RTK Query hooks
-  const [adminLogout] = useAdminLogoutMutation();
   const [deleteBusiness] = useDeleteBusinessMutation();
   const [assignBusinessOwner] = useAssignBusinessOwnerMutation();
   const [updateBusinessStatus] = useUpdateBusinessStatusMutation();
@@ -102,7 +99,7 @@ export default function AdminBusinessesPage() {
     currentPage: 1,
     totalPages: 1,
     totalBusinesses: 0,
-    businessesPerPage: 20,
+    businessesPerPage: 12,
   };
 
   const handleDeleteBusiness = async (businessId: string) => {
@@ -159,22 +156,6 @@ export default function AdminBusinessesPage() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await adminLogout().unwrap();
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      dispatch(clearAdminUser());
-      removeCookie("adminToken");
-      adminStorage.clearAdmin();
-      router.push("/admin-login");
-    }
-  };
-
   // Filter businesses based on search and status
   const filteredBusinesses =
     businesses?.filter((business: Business) => {
@@ -202,112 +183,34 @@ export default function AdminBusinessesPage() {
     businesses?.filter((b: Business) => b.ownerId).length || 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Building className="h-8 w-8 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
-                  Businesses Management
-                </h1>
-                <p className="text-muted-foreground">
-                  Manage business listings, approvals, and ownership
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Welcome back,</p>
-                <p className="font-semibold">{adminUser?.name}</p>
-                <Badge variant="outline" className="mt-1">
-                  {adminUser?.role.replace("_", " ")}
-                </Badge>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="text-destructive hover:text-destructive"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="p-6 space-y-6 min-h-screen bg-background">
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Building className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Total Businesses
-                  </p>
-                  <p className="text-2xl font-bold">{totalBusinesses}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Total Businesses"
+            value={totalBusinesses}
+            icon={<Building className="h-6 w-6 text-blue-600" />}
+          />
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Active Businesses
-                  </p>
-                  <p className="text-2xl font-bold">{activeBusinesses}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Active Businesses"
+            value={activeBusinesses}
+            icon={<CheckCircle className="h-6 w-6 text-green-600" />}
+          />
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <AlertTriangle className="h-6 w-6 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Pending Approval
-                  </p>
-                  <p className="text-2xl font-bold">{pendingBusinesses}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Pending Approval"
+            value={pendingBusinesses}
+            icon={<AlertTriangle className="h-6 w-6 text-amber-600" />}
+          />
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Assigned Owners
-                  </p>
-                  <p className="text-2xl font-bold">{assignedBusinesses}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Assigned Owners"
+            value={assignedBusinesses}
+            icon={<Users className="h-6 w-6 text-purple-600" />}
+          />
         </div>
 
         {/* Filters and Search */}
