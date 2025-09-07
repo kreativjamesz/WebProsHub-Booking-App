@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAppSelector } from "@/lib/hooks";
+import { useAdminHeader } from "@/lib/hooks";
 
 import {
   useGetBookingsQuery,
@@ -23,14 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -44,22 +36,19 @@ import {
   Clock,
   User,
   Building,
-  Eye,
-  XCircle,
   CheckCircle,
   Filter,
 } from "lucide-react";
 import { getCookie } from "@/lib/utils/cookies";
 import { toast } from "sonner";
 import { Booking } from "@/types/booking";
-import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
-import { useAdminHeader } from "@/lib/hooks";
-import { StatCard } from "@/components/admin/StatCard";
+import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
 import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
+import { BookingsTable } from "@/components/admin/BookingsTable";
+import { AdminFilterCard } from "@/components/admin/AdminFilterCard";
 
 export default function AdminBookingsPage() {
-  const { adminUser } = useAppSelector((state) => state.adminAuth);
   useAdminHeader("Booking Management", [
     { label: "Dashboard", href: "/admin" },
     { label: "Bookings" },
@@ -72,7 +61,7 @@ export default function AdminBookingsPage() {
   console.log("Selected booking state:", selectedBooking);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [dateFilter] = useState<string>("all");
 
   // Check admin token
   const adminToken = getCookie("adminToken");
@@ -152,7 +141,17 @@ export default function AdminBookingsPage() {
           <CardContent className="pt-6">
             <div className="text-center text-red-600">
               Error loading bookings:{" "}
-              {(bookingsError as string) || "Unknown error"}
+              {(
+                bookingsError as { data?: { error?: string; message?: string } }
+              )?.data?.error ||
+                (
+                  bookingsError as {
+                    data?: { error?: string; message?: string };
+                  }
+                )?.data?.message ||
+                (typeof bookingsError === "string"
+                  ? bookingsError
+                  : "Unknown error")}
             </div>
           </CardContent>
         </Card>
@@ -161,64 +160,69 @@ export default function AdminBookingsPage() {
   }
 
   return (
-    <AdminPageContainer>
+    <AdminPageContainer className="space-y-6">
       {/* Header now global in layout */}
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Total Bookings"
-          value={totalBookingsCount}
-          icon={<Calendar className="h-5 w-5 text-blue-600" />}
-        />
-        <StatCard
-          title="Pending"
-          value={pendingCount}
-          icon={<Clock className="h-5 w-5 text-yellow-600" />}
-        />
-        <StatCard
-          title="Confirmed"
-          value={confirmedCount}
-          icon={<CheckCircle className="h-5 w-5 text-green-600" />}
-        />
-        <StatCard
-          title="Completed"
-          value={completedCount}
-          icon={<CheckCircle className="h-5 w-5 text-green-600" />}
-        />
-      </div>
+      <AdminCardGrid
+        cols={{ base: 1, md: 4, lg: 4 }}
+        gapClassName="gap-4"
+        items={[
+          {
+            type: "stat",
+            title: "Total Bookings",
+            value: totalBookingsCount,
+            icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Pending",
+            value: pendingCount,
+            icon: <Clock className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Confirmed",
+            value: confirmedCount,
+            icon: <CheckCircle className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Completed",
+            value: completedCount,
+            icon: <CheckCircle className="h-4 w-4 text-muted-foreground" />,
+          },
+        ]}
+      />
 
       {/* Filters and Search */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filters & Search</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <SearchInput
-                placeholder="Search bookings..."
-                value={searchTerm}
-                onChange={setSearchTerm}
-                delay={500}
-              />
-            </div>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                <SelectItem value="COMPLETED">Completed</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-
+      <AdminFilterCard
+        className="bookings-filters-search mb-8"
+        icon={<Filter className="h-5 w-5" />}
+        title="Filters & Search"
+        search={{
+          placeholder: "Search bookings...",
+          value: searchTerm,
+          onChange: setSearchTerm,
+          delay: 500,
+        }}
+        selects={[
+          {
+            id: "status",
+            label: undefined,
+            value: statusFilter,
+            onValueChange: setStatusFilter,
+            options: [
+              { label: "All Status", value: "all" },
+              { label: "Pending", value: "PENDING" },
+              { label: "Confirmed", value: "CONFIRMED" },
+              { label: "Completed", value: "COMPLETED" },
+              { label: "Cancelled", value: "CANCELLED" },
+            ],
+            triggerClassName: "w-full md:w-48",
+          },
+        ]}
+        actions={
+          <div className="flex gap-2">
             <Button onClick={() => refetchBookings()} variant="outline">
               Refresh
             </Button>
@@ -259,11 +263,11 @@ export default function AdminBookingsPage() {
               Test Dialog
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        }
+      />
 
       {/* Bookings Table */}
-      <Card className="mb-8">
+      <Card className="bookings-table-container mb-8">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Calendar className="h-5 w-5" />
@@ -274,154 +278,25 @@ export default function AdminBookingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoadingBookings ? (
-            <div className="text-center py-8">Loading bookings...</div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Business</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Date & Time</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bookings?.map((booking: Booking) => (
-                    <TableRow
-                      key={booking.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => {
-                        console.log("Row clicked, setting booking:", booking);
-                        setSelectedBooking(booking);
-                      }}
-                    >
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-medium">
-                            {booking.user?.name || "N/A"}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {booking.user?.email || "N/A"}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-medium">
-                            {booking.business?.name || "N/A"}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-medium">
-                            {booking.service?.name || "N/A"}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            ${booking.service?.price || "N/A"}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-medium">
-                            {new Date(booking.date).toLocaleDateString()}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {booking.time}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            booking.status === "CONFIRMED"
-                              ? "default"
-                              : booking.status === "COMPLETED"
-                              ? "default"
-                              : booking.status === "PENDING"
-                              ? "secondary"
-                              : "destructive"
-                          }
-                        >
-                          {booking.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Select
-                            value={booking.status}
-                            onValueChange={(value) =>
-                              handleStatusUpdate(booking.id, value)
-                            }
-                          >
-                            <SelectTrigger
-                              className="w-32"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="PENDING">Pending</SelectItem>
-                              <SelectItem value="CONFIRMED">
-                                Confirmed
-                              </SelectItem>
-                              <SelectItem value="COMPLETED">
-                                Completed
-                              </SelectItem>
-                              <SelectItem value="CANCELLED">
-                                Cancelled
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              console.log(
-                                "View button clicked, setting booking:",
-                                booking
-                              );
-                              setSelectedBooking(booking);
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteBooking(booking.id);
-                            }}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+          <BookingsTable
+            bookings={bookings}
+            isLoading={isLoadingBookings}
+            onRowClick={(b) => setSelectedBooking(b)}
+            onView={(b) => setSelectedBooking(b)}
+            onDelete={(id) => handleDeleteBooking(id)}
+            onStatusChange={(id, status) => handleStatusUpdate(id, status)}
+          />
 
-              {/* Pagination */}
-              <div className="mt-6">
-                <Pagination
-                  currentPage={pagination.currentPage}
-                  totalPages={pagination.totalPages}
-                  totalItems={pagination.totalBookings}
-                  itemsPerPage={pagination.bookingsPerPage}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            </>
-          )}
+          {/* Pagination */}
+          <div className="mt-6">
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalBookings}
+              itemsPerPage={pagination.bookingsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -433,7 +308,7 @@ export default function AdminBookingsPage() {
           if (!open) setSelectedBooking(null);
         }}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-7xl">
           <DialogHeader>
             <DialogTitle>Booking Details</DialogTitle>
             <DialogDescription>

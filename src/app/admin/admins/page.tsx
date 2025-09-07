@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -32,23 +31,21 @@ import { Switch } from "@/components/ui/switch";
 import {
   Users,
   Shield,
-  UserPlus,
-  Edit,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Crown,
   UserCheck,
-  Trash2,
+  Crown,
+  AlertTriangle,
+  UserPlus,
 } from "lucide-react";
 import { getCookie } from "@/lib/utils/cookies";
 import { toast } from "sonner";
 import { type AdminUser } from "@/stores/slices/private/admin.types";
-import { SearchInput } from "@/components/admin/SearchInput";
+// SearchInput no longer needed here; AdminFilterCard encapsulates it
 import { Pagination } from "@/components/admin/Pagination";
 import { useAdminHeader } from "@/lib/hooks";
-import { StatCard } from "@/components/admin/StatCard";
+import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
 import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
+import { AdminsTable } from "@/components/admin/AdminsTable";
+import { AdminFilterCard } from "@/components/admin/AdminFilterCard";
 
 export default function AdminsPage() {
   const router = useRouter();
@@ -76,37 +73,16 @@ export default function AdminsPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // RTK Query hooks
-  const {
-    data: adminsData,
-    isLoading: isLoadingAdmins,
-    error: adminsError,
-    refetch: refetchAdmins,
-  } = useGetAdminsQuery({
+  const { data: adminsData, isLoading: isLoadingAdmins } = useGetAdminsQuery({
     page: currentPage,
     search: searchTerm,
     role: roleFilter,
     status: statusFilter,
   });
 
-  const [createAdmin, { isLoading: isCreatingAdmin }] =
-    useCreateAdminMutation();
-  const [updateAdmin, { isLoading: isUpdatingAdmin }] =
-    useUpdateAdminMutation();
-  const [deleteAdmin, { isLoading: isDeletingAdmin }] =
-    useDeleteAdminMutation();
-
-  // Extract data from API response
-  const admins = adminsData?.admins || [];
-  const pagination = adminsData?.pagination || {
-    currentPage: 1,
-    totalPages: 1,
-    totalAdmins: 0,
-    adminsPerPage: 12,
-  };
-
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
+  const [createAdmin] = useCreateAdminMutation();
+  const [updateAdmin] = useUpdateAdminMutation();
+  const [deleteAdmin] = useDeleteAdminMutation();
 
   const handleCreateAdmin = async (
     adminData: Omit<AdminUser, "id" | "createdAt" | "updatedAt" | "lastLoginAt">
@@ -115,7 +91,7 @@ export default function AdminsPage() {
       await createAdmin(adminData).unwrap();
       toast.success("Admin user created successfully");
       setIsCreateDialogOpen(false);
-      refetchAdmins();
+      // optional: refetchAdmins();
     } catch (error: unknown) {
       const errorMessage =
         (error as { data?: { error?: string } })?.data?.error ||
@@ -136,7 +112,7 @@ export default function AdminsPage() {
       toast.success("Admin user updated successfully");
       setIsEditDialogOpen(false);
       setSelectedAdmin(null);
-      refetchAdmins();
+      // optional: refetchAdmins();
     } catch (error: unknown) {
       const errorMessage =
         (error as { data?: { error?: string } })?.data?.error ||
@@ -151,7 +127,8 @@ export default function AdminsPage() {
       try {
         await deleteAdmin(adminId).unwrap();
         toast.success("Admin user deleted successfully");
-        refetchAdmins();
+        setSelectedAdmin(null);
+        // optional: refetchAdmins();
       } catch (error: unknown) {
         const errorMessage =
           (error as { data?: { error?: string } })?.data?.error ||
@@ -161,6 +138,19 @@ export default function AdminsPage() {
       }
     }
   };
+
+  // Extract data from API response
+  const admins = adminsData?.admins || [];
+  const pagination = adminsData?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalAdmins: 0,
+    adminsPerPage: 12,
+  };
+
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
 
   // Calculate statistics
   const totalAdmins = pagination.totalAdmins;
@@ -174,49 +164,6 @@ export default function AdminsPage() {
   const supportAdmins = admins.filter(
     (a: AdminUser) => a.role === "SUPPORT"
   ).length;
-
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "SUPER_ADMIN":
-        return (
-          <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1">
-            <Crown className="h-3 w-3" />
-            Super Admin
-          </Badge>
-        );
-      case "MODERATOR":
-        return <Badge className="bg-blue-100 text-blue-800">Moderator</Badge>;
-      case "SUPPORT":
-        return <Badge className="bg-green-100 text-green-800">Support</Badge>;
-      default:
-        return <Badge variant="secondary">{role}</Badge>;
-    }
-  };
-
-  const getStatusBadge = (isActive: boolean) => {
-    return isActive ? (
-      <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
-        <CheckCircle className="h-3 w-3" />
-        Active
-      </Badge>
-    ) : (
-      <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
-        <XCircle className="h-3 w-3" />
-        Inactive
-      </Badge>
-    );
-  };
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Never";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   if (adminUser?.role !== "SUPER_ADMIN") {
     return (
@@ -240,211 +187,128 @@ export default function AdminsPage() {
   }
 
   return (
-    <AdminPageContainer>
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Admins"
-            value={totalAdmins}
-            icon={<Users className="h-6 w-6 text-blue-600" />}
-          />
-          <StatCard
-            title="Active Admins"
-            value={activeAdmins}
-            icon={<UserCheck className="h-6 w-6 text-green-600" />}
-          />
-          <StatCard
-            title="Super Admins"
-            value={superAdmins}
-            icon={<Crown className="h-6 w-6 text-purple-600" />}
-          />
-          <StatCard
-            title="Moderator Admins"
-            value={moderatorAdmins}
-            icon={<Shield className="h-6 w-6 text-orange-600" />}
-          />
-          <StatCard
-            title="Support Admins"
-            value={supportAdmins}
-            icon={<Shield className="h-6 w-6 text-orange-600" />}
-          />
-        </div>
+    <AdminPageContainer className="space-y-6">
+      {/* Statistics Cards */}
+      <AdminCardGrid
+        cols={{ base: 1, md: 4, lg: 4 }}
+        gapClassName="gap-4"
+        items={[
+          {
+            type: "stat",
+            title: "Total Admins",
+            value: totalAdmins,
+            icon: <Users className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Active Admins",
+            value: activeAdmins,
+            icon: <UserCheck className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Super Admins",
+            value: superAdmins,
+            icon: <Crown className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Moderator Admins",
+            value: moderatorAdmins,
+            icon: <Shield className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Support Admins",
+            value: supportAdmins,
+            icon: <Shield className="h-4 w-4 text-muted-foreground" />,
+          },
+        ]}
+      />
 
-        {/* Error Alert */}
-        {/* This dialog is not directly managed by isEditDialogOpen, so it needs its own state */}
-        {/* For simplicity, we'll keep it as a separate dialog */}
-        {/* This section is removed as per the new_code, as the error alert is no longer present */}
+      {/* Filters & Search */}
+      <AdminFilterCard
+        className="mb-6"
+        icon={<Shield className="h-5 w-5" />}
+        title="Filters & Search"
+        search={{
+          placeholder: "Search admins...",
+          value: searchTerm,
+          onChange: setSearchTerm,
+          delay: 500,
+        }}
+        selects={[
+          {
+            id: "role",
+            value: roleFilter,
+            onValueChange: setRoleFilter,
+            options: [
+              { label: "All Roles", value: "all" },
+              { label: "Super Admin", value: "SUPER_ADMIN" },
+              { label: "Admin", value: "ADMIN" },
+              { label: "Support", value: "SUPPORT" },
+              { label: "Moderator", value: "MODERATOR" },
+            ],
+            triggerClassName: "w-32",
+          },
+          {
+            id: "status",
+            value: statusFilter,
+            onValueChange: setStatusFilter,
+            options: [
+              { label: "All Status", value: "all" },
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
+            ],
+            triggerClassName: "w-32",
+          },
+        ]}
+        actions={
+          <Button
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="ml-0 md:ml-2"
+            size="sm"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Admin
+          </Button>
+        }
+      />
 
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <SearchInput
-              placeholder="Search admins..."
-              value={searchTerm}
-              onChange={setSearchTerm}
-              delay={500}
+      {/* Admins Table */}
+      <Card className="admins-table-container">
+        <CardHeader>
+          <CardTitle>System Administrators</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <AdminsTable
+              admins={admins}
+              isLoading={isLoadingAdmins}
+              onEdit={(a) => {
+                setSelectedAdmin(a);
+                setIsEditDialogOpen(true);
+              }}
+              onDelete={(id) => handleDeleteAdmin(id)}
             />
-          </div>
-          <div className="flex gap-2">
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="SUPPORT">Support</SelectItem>
-                <SelectItem value="MODERATOR">Moderator</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={() => setIsCreateDialogOpen(true)}
-              className="ml-2"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Admin
-            </Button>
-          </div>
-        </div>
 
-        {/* Admins Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>System Administrators</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium">Name</th>
-                    <th className="text-left py-3 px-4 font-medium">Role</th>
-                    <th className="text-left py-3 px-4 font-medium">
-                      Department
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
-                    <th className="text-left py-3 px-4 font-medium">
-                      Last Login
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingAdmins ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="py-8 text-center text-muted-foreground"
-                      >
-                        Loading admins...
-                      </td>
-                    </tr>
-                  ) : adminsError ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="py-8 text-center text-destructive"
-                      >
-                        Error loading admins:{" "}
-                        {(adminsError as { data?: { error?: string } })?.data
-                          ?.error || "Unknown error"}
-                      </td>
-                    </tr>
-                  ) : admins.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="py-8 text-center text-muted-foreground"
-                      >
-                        No admins found matching your criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    admins.map((admin: AdminUser) => (
-                      <tr key={admin.id} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium">{admin.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {admin.email}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              ID: {admin.employeeId || "N/A"}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          {getRoleBadge(admin.role)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge variant="outline">
-                            {admin.department || "N/A"}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4">
-                          {getStatusBadge(admin.isActive)}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {formatDate(admin.lastLoginAt || null)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedAdmin(admin);
-                                setIsEditDialogOpen(true);
-                              }}
-                              disabled={isUpdatingAdmin}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteAdmin(admin.id)}
-                              className="text-destructive hover:text-destructive"
-                              disabled={isDeletingAdmin}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-
-              {/* Pagination */}
-              <div className="mt-6">
-                <Pagination
-                  currentPage={pagination.currentPage}
-                  totalPages={pagination.totalPages}
-                  totalItems={pagination.totalAdmins}
-                  itemsPerPage={pagination.adminsPerPage}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
+            {/* Pagination */}
+            <div className="mt-6">
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalAdmins}
+                itemsPerPage={pagination.adminsPerPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
-          </CardContent>
-        </Card>
-      
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Edit Admin Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-7xl">
           <DialogHeader>
             <DialogTitle>Edit Admin</DialogTitle>
           </DialogHeader>
@@ -540,10 +404,8 @@ export default function AdminsPage() {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Delete Confirmation Dialog */}
-      {/* This dialog is not directly managed by isEditDialogOpen, so it needs its own state */}
-      {/* For simplicity, we'll keep it as a separate dialog */}
       {selectedAdmin && (
         <Dialog
           open={true}
@@ -575,7 +437,7 @@ export default function AdminsPage() {
           </DialogContent>
         </Dialog>
       )}
-      
+
       {/* Create Admin Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-md">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAppSelector } from "@/lib/hooks";
+import {} from "@/lib/hooks";
 
 import {
   useGetBusinessesQuery,
@@ -19,14 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import {} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -37,11 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Building,
-  MapPin,
   Users,
-  Settings,
-  Trash2,
-  Eye,
   Loader2,
   AlertTriangle,
   CheckCircle,
@@ -52,14 +41,15 @@ import {
 } from "lucide-react";
 import { Business } from "@/types";
 import { toast } from "sonner";
-import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
 import { useAdminHeader } from "@/lib/hooks";
-import { StatCard } from "@/components/admin/StatCard";
+// StatCard kept for type reference in AdminCardGrid usage; remove if unused
 import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
+import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
+import { AdminFilterCard } from "@/components/admin/AdminFilterCard";
+import { BusinessesTable } from "@/components/admin/BusinessesTable";
 
 export default function AdminBusinessesPage() {
-  const { adminUser } = useAppSelector((state) => state.adminAuth);
   useAdminHeader("Businesses Management", [
     { label: "Dashboard", href: "/admin" },
     { label: "Businesses" },
@@ -71,8 +61,8 @@ export default function AdminBusinessesPage() {
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [cityFilter, setCityFilter] = useState("all");
+  const [categoryFilter] = useState("all");
+  const [cityFilter] = useState("all");
   const [isAssigningOwner, setIsAssigningOwner] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState("");
 
@@ -84,7 +74,6 @@ export default function AdminBusinessesPage() {
   const {
     data: businessesData,
     isLoading: isLoadingBusinesses,
-    error: businessesError,
     refetch: refetchBusinesses,
   } = useGetBusinessesQuery({
     page: currentPage,
@@ -184,78 +173,67 @@ export default function AdminBusinessesPage() {
     businesses?.filter((b: Business) => b.ownerId).length || 0;
 
   return (
-    <AdminPageContainer maxWidthClassName="max-w-screen-2xl">
+    <AdminPageContainer className="space-y-6">
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Total Businesses"
-          value={totalBusinesses}
-          icon={<Building className="h-6 w-6 text-blue-600" />}
-        />
-
-        <StatCard
-          title="Active Businesses"
-          value={activeBusinesses}
-          icon={<CheckCircle className="h-6 w-6 text-green-600" />}
-        />
-
-        <StatCard
-          title="Pending Approval"
-          value={pendingBusinesses}
-          icon={<AlertTriangle className="h-6 w-6 text-amber-600" />}
-        />
-
-        <StatCard
-          title="Assigned Owners"
-          value={assignedBusinesses}
-          icon={<Users className="h-6 w-6 text-purple-600" />}
-        />
-      </div>
+      <AdminCardGrid
+        cols={{ base: 1, md: 4, lg: 4 }}
+        gapClassName="gap-4"
+        items={[
+          {
+            type: "stat",
+            title: "Total Businesses",
+            value: totalBusinesses,
+            icon: <Building className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Active Businesses",
+            value: activeBusinesses,
+            icon: <CheckCircle className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Pending Approval",
+            value: pendingBusinesses,
+            icon: <AlertTriangle className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Assigned Owners",
+            value: assignedBusinesses,
+            icon: <Users className="h-4 w-4 text-muted-foreground" />,
+          },
+        ]}
+      />
 
       {/* Filters and Search */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filters & Search</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search" className="text-sm font-medium">
-                Search Businesses
-              </Label>
-              <div className="mt-1">
-                <SearchInput
-                  placeholder="Search by name, description, or city..."
-                  value={searchTerm}
-                  onChange={setSearchTerm}
-                  delay={500}
-                />
-              </div>
-            </div>
-            <div className="sm:w-48">
-              <Label htmlFor="status-filter" className="text-sm font-medium">
-                Filter by Status
-              </Label>
-              <select
-                id="status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <AdminFilterCard
+        className="businesses-filters-search mb-6"
+        icon={<Filter className="h-5 w-5" />}
+        title="Filters & Search"
+        search={{
+          placeholder: "Search by name, description, or city...",
+          value: searchTerm,
+          onChange: setSearchTerm,
+          delay: 500,
+        }}
+        selects={[
+          {
+            id: "status",
+            value: statusFilter,
+            onValueChange: setStatusFilter,
+            options: [
+              { label: "All Status", value: "all" },
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
+            ],
+            triggerClassName: "w-full sm:w-48",
+          },
+        ]}
+      />
 
       {/* Businesses Table */}
-      <Card>
+      <Card className="businesses-table-container">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Building className="h-5 w-5" />
@@ -272,85 +250,13 @@ export default function AdminBusinessesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table className="businesses-table">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Business</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredBusinesses.map((business: Business) => (
-                    <TableRow key={business.id}>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-medium">{business.name}</p>
-                          <p className="text-sm text-muted-foreground line-clamp-1">
-                            {business.description}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          <span>
-                            {business.city}, {business.state}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                          <Users className="h-3 w-3" />
-                          <span>{business.ownerId || "Unassigned"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={business.isActive ? "default" : "secondary"}
-                          className={
-                            business.isActive
-                              ? "bg-green-100 text-green-800"
-                              : ""
-                          }
-                        >
-                          {business.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedBusiness(business)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleToggleBusinessStatus(business.id)
-                            }
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteBusiness(business.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <BusinessesTable
+                businesses={filteredBusinesses}
+                isLoading={isLoadingBusinesses}
+                onView={(b) => setSelectedBusiness(b)}
+                onToggleStatus={(id) => handleToggleBusinessStatus(id)}
+                onDelete={(id) => handleDeleteBusiness(id)}
+              />
 
               {/* Pagination */}
               <div className="mt-6">

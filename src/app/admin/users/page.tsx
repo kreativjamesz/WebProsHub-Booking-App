@@ -1,45 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import {} from "@/lib/hooks";
 import {
   useGetUsersQuery,
   useUpdateUserRoleMutation,
   useDeleteUserMutation,
 } from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import {} from "@/components/ui/table";
 
-import { Users, UserCheck, Building2 } from "lucide-react";
+import { Users, UserCheck, Building2, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types/user";
 import { getCookie } from "@/lib/utils/cookies";
-import { SearchInput } from "@/components/admin/SearchInput";
 import { Pagination } from "@/components/admin/Pagination";
 import { useAdminHeader } from "@/lib/hooks";
-import { StatCard } from "@/components/admin/StatCard";
-import { ActionCard } from "@/components/admin/ActionCard";
+// StatCard not used directly; AdminCardGrid renders cards
 import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
+import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
+import { AdminFilterCard } from "@/components/admin/AdminFilterCard";
+import { UsersTable } from "@/components/admin/UsersTable";
 
 export default function AdminUsersPage() {
-  const { adminUser } = useAppSelector((state) => state.adminAuth);
-  const dispatch = useAppDispatch();
+  // const { adminUser } = useAppSelector((state) => state.adminAuth);
   useAdminHeader("User Management", [
     { label: "Dashboard", href: "/admin" },
     { label: "Users" },
@@ -149,177 +134,123 @@ export default function AdminUsersPage() {
   return (
     <AdminPageContainer className="space-y-6">
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Users"
-          value={totalUsers}
-          icon={<Users className="h-4 w-4 text-muted-foreground" />}
-        />
-
-        <StatCard
-          title="Customers"
-          value={customers}
-          icon={<UserCheck className="h-4 w-4 text-muted-foreground" />}
-        />
-
-        <StatCard
-          title="Business Owners"
-          value={businessOwners}
-          icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
-        />
-
-        <ActionCard
-          title={isShowingActive ? "Active Users" : "Inactive Users"}
-          subtitle="Click to toggle"
-          clickable
-          hover
-          onClick={toggleActiveInactive}
-          actions={
-            <span className="text-xs px-2 py-0.5 rounded bg-muted">Toggle</span>
-          }
-        >
-          <div className="text-2xl font-bold">
-            {isShowingActive ? activeUsers : inactiveUsers}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Showing {isShowingActive ? "ACTIVE" : "INACTIVE"} users
-          </p>
-        </ActionCard>
-      </div>
+      <AdminCardGrid
+        cols={{ base: 1, md: 4, lg: 4 }}
+        gapClassName="gap-4"
+        items={[
+          {
+            type: "stat",
+            title: "Total Users",
+            value: totalUsers,
+            icon: <Users className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Customers",
+            value: customers,
+            icon: <UserCheck className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "stat",
+            title: "Business Owners",
+            // subtitle: `Showing ${
+            //   isShowingActive ? "ACTIVE" : "INACTIVE"
+            // } users`,
+            value: businessOwners,
+            icon: <Building2 className="h-4 w-4 text-muted-foreground" />,
+          },
+          {
+            type: "action",
+            props: {
+              title: isShowingActive ? "Active Users" : "Inactive Users",
+              // subtitle: `Showing ${
+              //   isShowingActive ? "ACTIVE" : "INACTIVE"
+              // } users`,
+              clickable: true,
+              hover: true,
+              onClick: toggleActiveInactive,
+              actions: (
+                <span className="text-xs px-2 py-0.5 rounded bg-muted">
+                  Toggle
+                </span>
+              ),
+              content: (
+                <>
+                  <div className="text-2xl font-bold">
+                    {isShowingActive ? activeUsers : inactiveUsers}
+                  </div>
+                </>
+              ),
+            },
+          },
+        ]}
+      />
 
       {/* Filters and Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <SearchInput
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={setSearchTerm}
-                delay={500}
-              />
-            </div>
-
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="CUSTOMER">Customer</SelectItem>
-                <SelectItem value="BUSINESS_OWNER">Business Owner</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button onClick={() => refetchUsers()} variant="outline">
-              Refresh
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <AdminFilterCard
+        className="users-filters-search mb-6"
+        title="Filters & Search"
+        icon={<Filter className="h-5 w-5" />}
+        search={{
+          placeholder: "Search users...",
+          value: searchTerm,
+          onChange: setSearchTerm,
+          delay: 500,
+        }}
+        selects={[
+          {
+            id: "role",
+            value: roleFilter,
+            onValueChange: setRoleFilter,
+            options: [
+              { label: "All Roles", value: "all" },
+              { label: "Customer", value: "CUSTOMER" },
+              { label: "Business Owner", value: "BUSINESS_OWNER" },
+            ],
+            triggerClassName: "w-full md:w-48",
+          },
+          {
+            id: "status",
+            value: statusFilter,
+            onValueChange: setStatusFilter,
+            options: [
+              { label: "All Status", value: "all" },
+              { label: "Active", value: "ACTIVE" },
+              { label: "Inactive", value: "INACTIVE" },
+            ],
+            triggerClassName: "w-full md:w-48",
+          },
+        ]}
+        actions={
+          <Button onClick={() => refetchUsers()} variant="outline">
+            Refresh
+          </Button>
+        }
+      />
 
       {/* Users Table */}
-      <Card>
+      <Card className="users-table-container">
         <CardHeader>
           <CardTitle>Users</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoadingUsers ? (
-            <div className="text-center py-8">Loading users...</div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users?.map((user: User) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            user.role === "BUSINESS_OWNER"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {user.role === "BUSINESS_OWNER"
-                            ? "Business Owner"
-                            : "Customer"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Select
-                            value={user.role}
-                            onValueChange={(newRole) =>
-                              handleRoleUpdate(user.id, newRole)
-                            }
-                            disabled={isLoadingUsers}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="CUSTOMER">Customer</SelectItem>
-                              <SelectItem value="BUSINESS_OWNER">
-                                Business Owner
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+          <UsersTable
+            users={users}
+            isLoading={isLoadingUsers}
+            onUpdateRole={(id, role) => handleRoleUpdate(id, role)}
+            onDelete={(id) => handleDeleteUser(id)}
+          />
 
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user.id)}
-                            disabled={isLoadingUsers}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Pagination */}
-              <div className="mt-6">
-                <Pagination
-                  currentPage={pagination.currentPage}
-                  totalPages={pagination.totalPages}
-                  totalItems={pagination.totalUsers}
-                  itemsPerPage={pagination.usersPerPage}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            </>
-          )}
+          {/* Pagination */}
+          <div className="mt-6">
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalUsers}
+              itemsPerPage={pagination.usersPerPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </CardContent>
       </Card>
     </AdminPageContainer>
