@@ -12,9 +12,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Select,
@@ -42,7 +39,6 @@ import {
 import { getCookie } from "@/lib/utils/cookies";
 import { toast } from "sonner";
 import { Booking } from "@/types/booking";
-import { Pagination } from "@/components/admin/Pagination";
 import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
 import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
 import { BookingsTable } from "@/components/admin/BookingsTable";
@@ -267,38 +263,25 @@ export default function AdminBookingsPage() {
       />
 
       {/* Bookings Table */}
-      <Card className="bookings-table-container mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5" />
-            <span>Bookings</span>
-          </CardTitle>
-          <CardDescription>
-            Manage and monitor all system bookings
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BookingsTable
-            bookings={bookings}
-            isLoading={isLoadingBookings}
-            onRowClick={(b) => setSelectedBooking(b)}
-            onView={(b) => setSelectedBooking(b)}
-            onDelete={(id) => handleDeleteBooking(id)}
-            onStatusChange={(id, status) => handleStatusUpdate(id, status)}
-          />
-
-          {/* Pagination */}
-          <div className="mt-6">
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              totalItems={pagination.totalBookings}
-              itemsPerPage={pagination.bookingsPerPage}
-              onPageChange={setCurrentPage}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <BookingsTable
+        containerClassName="bookings-table-container mb-8"
+        title="Bookings"
+        titleIcon={<Calendar className="h-5 w-5" />}
+        description="Manage and monitor all system bookings"
+        bookings={bookings}
+        isLoading={isLoadingBookings}
+        onRowClick={(b) => setSelectedBooking(b)}
+        onView={(b) => setSelectedBooking(b)}
+        onDelete={(id) => handleDeleteBooking(id)}
+        onStatusChange={(id, status) => handleStatusUpdate(id, status)}
+        pagination={{
+          currentPage: pagination.currentPage,
+          totalPages: pagination.totalPages,
+          totalItems: pagination.totalBookings,
+          itemsPerPage: pagination.bookingsPerPage,
+        }}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Booking Details Dialog */}
       <Dialog

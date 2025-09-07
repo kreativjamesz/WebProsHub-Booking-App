@@ -8,14 +8,13 @@ import {
   useDeleteUserMutation,
 } from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {} from "@/components/ui/table";
 
 import { Users, UserCheck, Building2, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types/user";
 import { getCookie } from "@/lib/utils/cookies";
-import { Pagination } from "@/components/admin/Pagination";
 import { useAdminHeader } from "@/lib/hooks";
 // StatCard not used directly; AdminCardGrid renders cards
 import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
@@ -229,30 +228,23 @@ export default function AdminUsersPage() {
       />
 
       {/* Users Table */}
-      <Card className="users-table-container">
-        <CardHeader>
-          <CardTitle>Users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <UsersTable
-            users={users}
-            isLoading={isLoadingUsers}
-            onUpdateRole={(id, role) => handleRoleUpdate(id, role)}
-            onDelete={(id) => handleDeleteUser(id)}
-          />
-
-          {/* Pagination */}
-          <div className="mt-6">
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              totalItems={pagination.totalUsers}
-              itemsPerPage={pagination.usersPerPage}
-              onPageChange={setCurrentPage}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <UsersTable
+        containerClassName="users-table-container"
+        title="Users"
+        titleIcon={<Users className="h-5 w-5" />}
+        description="Manage system users"
+        users={users}
+        isLoading={isLoadingUsers}
+        onUpdateRole={(id, role) => handleRoleUpdate(id, role)}
+        onDelete={(id) => handleDeleteUser(id)}
+        pagination={{
+          currentPage: pagination.currentPage,
+          totalPages: pagination.totalPages,
+          totalItems: pagination.totalUsers,
+          itemsPerPage: pagination.usersPerPage,
+        }}
+        onPageChange={setCurrentPage}
+      />
     </AdminPageContainer>
   );
 }

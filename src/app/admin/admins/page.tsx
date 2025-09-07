@@ -11,7 +11,6 @@ import {
   useDeleteAdminMutation,
 } from "@/stores/slices/private/admin.api";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,15 +31,14 @@ import {
   Users,
   Shield,
   UserCheck,
-  Crown,
   AlertTriangle,
   UserPlus,
+  UserX,
 } from "lucide-react";
 import { getCookie } from "@/lib/utils/cookies";
 import { toast } from "sonner";
 import { type AdminUser } from "@/stores/slices/private/admin.types";
 // SearchInput no longer needed here; AdminFilterCard encapsulates it
-import { Pagination } from "@/components/admin/Pagination";
 import { useAdminHeader } from "@/lib/hooks";
 import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
 import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
@@ -155,6 +153,7 @@ export default function AdminsPage() {
   // Calculate statistics
   const totalAdmins = pagination.totalAdmins;
   const activeAdmins = admins.filter((a: AdminUser) => a.isActive).length;
+  const inactiveAdmins = admins.filter((a: AdminUser) => !a.isActive).length;
   const superAdmins = admins.filter(
     (a: AdminUser) => a.role === "SUPER_ADMIN"
   ).length;
@@ -164,6 +163,26 @@ export default function AdminsPage() {
   const supportAdmins = admins.filter(
     (a: AdminUser) => a.role === "SUPPORT"
   ).length;
+
+  const [roleCard, setRoleCard] = useState<
+    "SUPER_ADMIN" | "MODERATOR" | "SUPPORT"
+  >("SUPPORT");
+  const roleCountByKey: Record<
+    "SUPER_ADMIN" | "MODERATOR" | "SUPPORT",
+    number
+  > = {
+    SUPER_ADMIN: superAdmins,
+    MODERATOR: moderatorAdmins,
+    SUPPORT: supportAdmins,
+  };
+  const roleLabelByKey: Record<
+    "SUPER_ADMIN" | "MODERATOR" | "SUPPORT",
+    string
+  > = {
+    SUPER_ADMIN: "SuperAdmins",
+    MODERATOR: "Moderators",
+    SUPPORT: "Supports",
+  };
 
   if (adminUser?.role !== "SUPER_ADMIN") {
     return (
@@ -198,37 +217,60 @@ export default function AdminsPage() {
             title: "Total Admins",
             value: totalAdmins,
             icon: <Users className="h-4 w-4 text-muted-foreground" />,
+            className: "text-blue-500",
           },
           {
             type: "stat",
             title: "Active Admins",
+            subtitle: `Showing ${activeAdmins} active admins`,
             value: activeAdmins,
             icon: <UserCheck className="h-4 w-4 text-muted-foreground" />,
+            className: "text-green-500",
           },
           {
             type: "stat",
-            title: "Super Admins",
-            value: superAdmins,
-            icon: <Crown className="h-4 w-4 text-muted-foreground" />,
+            title: "Inactive Admins",
+            subtitle: `Showing ${inactiveAdmins} inactive admins`,
+            value: inactiveAdmins,
+            icon: <UserX className="h-4 w-4 text-muted-foreground" />,
+            className: "text-red-500",
           },
           {
-            type: "stat",
-            title: "Moderator Admins",
-            value: moderatorAdmins,
-            icon: <Shield className="h-4 w-4 text-muted-foreground" />,
-          },
-          {
-            type: "stat",
-            title: "Support Admins",
-            value: supportAdmins,
-            icon: <Shield className="h-4 w-4 text-muted-foreground" />,
+            type: "action",
+            props: {
+              title: roleLabelByKey[roleCard],
+              clickable: false,
+              hover: true,
+              actions: (
+                <Select
+                  value={roleCard}
+                  onValueChange={(v) => setRoleCard(v as typeof roleCard)}
+                >
+                  <SelectTrigger className="h-8 w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SUPER_ADMIN">SuperAdmins</SelectItem>
+                    <SelectItem value="MODERATOR">Moderators</SelectItem>
+                    <SelectItem value="SUPPORT">Supports</SelectItem>
+                  </SelectContent>
+                </Select>
+              ),
+              content: (
+                <>
+                  <div className="text-2xl font-bold">
+                    {roleCountByKey[roleCard]}
+                  </div>
+                </>
+              ),
+            },
           },
         ]}
       />
 
       {/* Filters & Search */}
       <AdminFilterCard
-        className="mb-6"
+        className="admins-filters-search mb-6"
         icon={<Shield className="h-5 w-5" />}
         title="Filters & Search"
         search={{
@@ -276,35 +318,24 @@ export default function AdminsPage() {
       />
 
       {/* Admins Table */}
-      <Card className="admins-table-container">
-        <CardHeader>
-          <CardTitle>System Administrators</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <AdminsTable
-              admins={admins}
-              isLoading={isLoadingAdmins}
-              onEdit={(a) => {
-                setSelectedAdmin(a);
-                setIsEditDialogOpen(true);
-              }}
-              onDelete={(id) => handleDeleteAdmin(id)}
-            />
-
-            {/* Pagination */}
-            <div className="mt-6">
-              <Pagination
-                currentPage={pagination.currentPage}
-                totalPages={pagination.totalPages}
-                totalItems={pagination.totalAdmins}
-                itemsPerPage={pagination.adminsPerPage}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <AdminsTable
+        containerClassName="admins-table-container"
+        title="System Administrators"
+        admins={admins}
+        isLoading={isLoadingAdmins}
+        onEdit={(a) => {
+          setSelectedAdmin(a);
+          setIsEditDialogOpen(true);
+        }}
+        onDelete={(id) => handleDeleteAdmin(id)}
+        pagination={{
+          currentPage: pagination.currentPage,
+          totalPages: pagination.totalPages,
+          totalItems: pagination.totalAdmins,
+          itemsPerPage: pagination.adminsPerPage,
+        }}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Edit Admin Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

@@ -10,38 +10,14 @@ import {
   useUpdateBusinessStatusMutation,
 } from "@/stores/slices/private/admin.api";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Building,
-  Users,
-  Loader2,
-  AlertTriangle,
-  CheckCircle,
-  Filter,
-  Phone,
-  Mail,
-  Globe,
-} from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Building, Users, Loader2, AlertTriangle, CheckCircle, Filter, Phone, Mail, Globe } from "lucide-react";
 import { Business } from "@/types";
 import { toast } from "sonner";
-import { Pagination } from "@/components/admin/Pagination";
 import { useAdminHeader } from "@/lib/hooks";
 // StatCard kept for type reference in AdminCardGrid usage; remove if unused
 import { AdminPageContainer } from "@/components/admin/AdminPageContainer";
@@ -233,45 +209,24 @@ export default function AdminBusinessesPage() {
       />
 
       {/* Businesses Table */}
-      <Card className="businesses-table-container">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Building className="h-5 w-5" />
-            <span>Businesses</span>
-          </CardTitle>
-          <CardDescription>
-            Manage business listings, approvals, and ownership
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingBusinesses ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <BusinessesTable
-                businesses={filteredBusinesses}
-                isLoading={isLoadingBusinesses}
-                onView={(b) => setSelectedBusiness(b)}
-                onToggleStatus={(id) => handleToggleBusinessStatus(id)}
-                onDelete={(id) => handleDeleteBusiness(id)}
-              />
-
-              {/* Pagination */}
-              <div className="mt-6">
-                <Pagination
-                  currentPage={pagination.currentPage}
-                  totalPages={pagination.totalPages}
-                  totalItems={pagination.totalBusinesses}
-                  itemsPerPage={pagination.businessesPerPage}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <BusinessesTable
+        containerClassName="businesses-table-container"
+        title="Businesses"
+        titleIcon={<Building className="h-5 w-5" />}
+        description="Manage business listings, approvals, and ownership"
+        businesses={filteredBusinesses}
+        isLoading={isLoadingBusinesses}
+        onView={(b) => setSelectedBusiness(b)}
+        onToggleStatus={(id) => handleToggleBusinessStatus(id)}
+        onDelete={(id) => handleDeleteBusiness(id)}
+        pagination={{
+          currentPage: pagination.currentPage,
+          totalPages: pagination.totalPages,
+          totalItems: pagination.totalBusinesses,
+          itemsPerPage: pagination.businessesPerPage,
+        }}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Business Details Dialog */}
       <Dialog
